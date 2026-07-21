@@ -8,6 +8,18 @@ export interface VideoMeta {
   upload_date: string;
   thumbnail_url: string;
   webpage_url: string;
+  is_playlist: boolean;
+  playlist_title: string | null;
+  playlist_id: string | null;
+  playlist_count: number | null;
+}
+
+export interface PlaylistEntry {
+  index: number;
+  title: string;
+  url: string;
+  thumbnail: string;
+  duration: number;
 }
 
 export interface FormatInfo {
@@ -29,7 +41,11 @@ export interface DownloadRequest {
   start_time: string | null;
   end_time: string | null;
   premiere_mode: boolean;
-  download_type: "VideoAudio" | "VideoOnly" | "AudioOnly";
+  download_type: "Video" | "Audio";
+  video_title: string;
+  thumbnail_url: string;
+  has_audio: boolean;
+  encoding: string;
 }
 
 export interface DownloadItem {
@@ -41,25 +57,52 @@ export interface DownloadItem {
   progress: number;
   speed: string;
   eta: string;
-  status: string;
+  status: string | Record<string, string>;
+  thumbnail_url: string;
+  ext: string;
+  format_id: string;
+  download_type: string;
+  has_audio: boolean;
 }
 
 export interface AppSettings {
   default_download_folder: string;
   auto_update_ytdlp: boolean;
   auto_convert_premiere: boolean;
+  show_all_formats: boolean;
 }
 
-export async function analyzeUrl(url: string): Promise<VideoMeta> {
-  return invoke("analyze_url", { url });
+export interface QualityOption {
+  label: string;
+  height: number;
+  formatId: string;
+  hasAudio: boolean;
+  fps: number | null;
+  filesize: number | null;
 }
 
-export async function listFormats(url: string): Promise<FormatInfo[]> {
-  return invoke("list_formats", { url });
+export interface Preset {
+  id: string;
+  name: string;
+  downloadType: "audio-only" | "video+audio";
+  encoding: string;
+  premiereMode: boolean;
+}
+
+export interface AnalyzeResponse {
+  is_playlist: boolean;
+  video_meta: VideoMeta | null;
+  formats: FormatInfo[] | null;
+  playlist_title: string | null;
+  playlist_entries: PlaylistEntry[] | null;
+}
+
+export async function analyzeVideo(url: string): Promise<AnalyzeResponse> {
+  return invoke("analyze_video", { url });
 }
 
 export async function enqueueDownload(request: DownloadRequest): Promise<DownloadItem> {
-  return invoke("enqueue_download", { request });
+  return invoke<DownloadItem>("enqueue_download", { request });
 }
 
 export async function cancelDownload(id: string): Promise<boolean> {
@@ -68,6 +111,10 @@ export async function cancelDownload(id: string): Promise<boolean> {
 
 export async function getQueue(): Promise<DownloadItem[]> {
   return invoke("get_queue");
+}
+
+export async function removeFromQueue(id: string): Promise<boolean> {
+  return invoke("remove_from_queue", { id });
 }
 
 export async function getSettings(): Promise<AppSettings> {
@@ -84,6 +131,10 @@ export async function browseFolder(): Promise<string | null> {
 
 export async function updateYtdlp(): Promise<string> {
   return invoke("update_ytdlp");
+}
+
+export async function openInExplorer(path: string): Promise<void> {
+  return invoke("open_in_explorer", { path });
 }
 
 export function onDownloadProgress(

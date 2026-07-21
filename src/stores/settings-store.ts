@@ -14,6 +14,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     default_download_folder: "",
     auto_update_ytdlp: false,
     auto_convert_premiere: false,
+    show_all_formats: false,
   },
   loaded: false,
 

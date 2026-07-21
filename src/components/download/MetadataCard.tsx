@@ -3,7 +3,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useDownloadStore } from "@/stores/download-store";
 import { formatDuration, formatDate } from "@/lib/utils";
 
-export function MetadataCard() {
+interface Props {
+  hero?: boolean;
+}
+
+export function MetadataCard({ hero }: Props) {
   const { metadata, error } = useDownloadStore();
   const [imgLoaded, setImgLoaded] = useState(false);
 
@@ -16,6 +20,31 @@ export function MetadataCard() {
   }
 
   if (!metadata) return null;
+
+  if (hero) {
+    return (
+      <div className="space-y-3">
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted">
+          {metadata.thumbnail_url && (
+            <img
+              src={metadata.thumbnail_url}
+              alt={metadata.title}
+              className={`w-full h-full object-cover transition-opacity ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+              onLoad={() => setImgLoaded(true)}
+            />
+          )}
+        </div>
+        <div className="space-y-1">
+          <h2 className="font-semibold text-base leading-tight line-clamp-2">{metadata.title}</h2>
+          <p className="text-sm text-muted-foreground">{metadata.channel}</p>
+          <div className="flex gap-3 text-xs text-muted-foreground">
+            <span>{formatDuration(metadata.duration)}</span>
+            <span>{formatDate(metadata.upload_date)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Card>

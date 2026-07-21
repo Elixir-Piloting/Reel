@@ -1,44 +1,54 @@
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { ClipboardPaste, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useDownloadStore } from "@/stores/download-store";
-import { analyzeUrl as analyzeUrlApi, listFormats } from "@/lib/tauri";
 
 export function UrlInput() {
-  const { url, setUrl, setMetadata, setFormats, setSelectedFormatId, setError } = useDownloadStore();
-  const [analyzing, setAnalyzing] = useState(false);
+  const { url, setUrl, analyzeUrl, phase } = useDownloadStore();
+  const isAnalyzing = phase === "analyzing";
 
-  const handleAnalyze = async () => {
-    if (!url.trim()) return;
-    setAnalyzing(true);
-    setError(null);
+  const handlePaste = async () => {
     try {
-      const meta = await analyzeUrlApi(url.trim());
-      setMetadata(meta);
-      const formats = await listFormats(url.trim());
-      setFormats(formats);
-      if (formats.length > 0) {
-        setSelectedFormatId(formats[0].format_id);
+      const text = await navigator.clipboard.readText();
+      if (text.trim()) {
+        setUrl(text.trim());
+        setTimeout(() => analyzeUrl(), 50);
       }
-    } catch (err: unknown) {
-      setError(typeof err === "string" ? err : "Failed to analyze URL");
-    } finally {
-      setAnalyzing(false);
+    } catch {}
+  };
+
+  const handleInputPaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData("text");
+    if (pasted.trim()) {
+      setUrl(pasted.trim());
+      e.preventDefault();
+      setTimeout(() => analyzeUrl(), 50);
     }
   };
 
   return (
     <div className="flex gap-2">
-      <Input
-        placeholder="Paste YouTube URL"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
-        className="flex-1"
-      />
-      <Button onClick={handleAnalyze} disabled={analyzing || !url.trim()}>
-        {analyzing ? "Analyzing..." : "Analyze"}
-      </Button>
+      <div className="relative flex-1">
+        <Input
+          placeholder="Paste YouTube URL..."
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+          onPaste={handleInputPaste}
+          className="flex-1 pr-10"
+        />
+        {isAnalyzing && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        )}
+      </div>
+      <button
+        onClick={handlePaste}
+        disabled={isAnalyzing}
+        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50"
+        title="Paste from clipboard"
+      >
+        <ClipboardPaste className="h-4 w-4" />
+      </button>
     </div>
   );
 }
