@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { AppSettings } from "../lib/tauri";
-import { getSettings, saveSettings } from "../lib/tauri";
+import type { AppSettings } from "../shared/lib/types";
+import { dataService } from "../shared/lib/data-service";
 
 interface SettingsStore {
   settings: AppSettings;
@@ -20,7 +20,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   loadSettings: async () => {
     try {
-      const settings = await getSettings();
+      const settings = await dataService.getSettings();
       set({ settings, loaded: true });
     } catch {
       set({ loaded: true });
@@ -30,7 +30,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   updateSettings: async (partial) => {
     const current = get().settings;
     const updated = { ...current, ...partial };
-    await saveSettings(updated);
+    await dataService.saveSettings(updated);
     set({ settings: updated });
   },
 }));

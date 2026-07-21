@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { invoke } from '@tauri-apps/api/core';
-import type { VideoMeta, FormatInfo, AnalyzeResponse } from '../lib/tauri';
+import type { VideoMeta, FormatInfo, AnalyzeResponse } from '../shared/lib/types';
+import { dataService } from '../shared/lib/data-service';
 import { logger } from '../shared/lib/logger';
 
 export type Phase = 'idle' | 'analyzing' | 'ready' | 'playlist' | 'downloading' | 'completed' | 'error';
@@ -42,7 +42,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     const gen = ++analyzeGen;
     set({ phase: 'analyzing', error: null, metadata: null, formats: [], qualityOptions: [] });
     try {
-      const result = await invoke<AnalyzeResponse>('analyze_video', { url });
+      const result = await dataService.analyzeVideo(url);
       if (gen !== analyzeGen) return;
       set({
         metadata: result.video_meta,

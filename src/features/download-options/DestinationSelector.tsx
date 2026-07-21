@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useOptionsStore } from "@/stores/options-store";
 import { useAnalysisStore } from "@/stores/analysis-store";
-import { browseFolder } from "@/lib/tauri";
+import { dataService } from "@/shared/lib/data-service";
 import { useSettingsStore } from "@/stores/settings-store";
 
 export function DestinationSelector() {
@@ -21,7 +21,7 @@ export function DestinationSelector() {
   const fullPath = dir ? `${dir}\\${effectiveName}.${ext}` : "";
 
   const handleBrowse = async () => {
-    const d = await browseFolder();
+    const d = await dataService.browseFolder();
     if (d) setOutputDir(d);
   };
 

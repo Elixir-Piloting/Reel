@@ -1,5 +1,3 @@
-import { invoke } from "@tauri-apps/api/core";
-
 export interface VideoMeta {
   title: string;
   duration: number;
@@ -94,36 +92,4 @@ export interface AnalyzeResponse {
   formats: FormatInfo[] | null;
   playlist_title: string | null;
   playlist_entries: PlaylistEntry[] | null;
-}
-
-export async function analyzeVideo(url: string): Promise<AnalyzeResponse> {
-  return invoke("analyze_video", { url });
-}
-
-export async function enqueueDownload(request: DownloadRequest): Promise<DownloadItem> {
-  return invoke<DownloadItem>("enqueue_download", { request });
-}
-
-export async function cancelDownload(id: string): Promise<boolean> {
-  return invoke("cancel_download", { id });
-}
-
-export async function getSettings(): Promise<AppSettings> {
-  return invoke("get_settings");
-}
-
-export async function saveSettings(settings: AppSettings): Promise<void> {
-  return invoke("save_settings", { settings });
-}
-
-export async function browseFolder(): Promise<string | null> {
-  return invoke("browse_folder");
-}
-
-export async function updateYtdlp(): Promise<string> {
-  return invoke("update_ytdlp");
-}
-
-export async function openInExplorer(path: string): Promise<void> {
-  return invoke("open_in_explorer", { path });
 }

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { dataService } from '../shared/lib/data-service';
 import { logger } from '../shared/lib/logger';
 
 interface DownloadItem {
@@ -55,7 +55,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>((set, ge
     const item = get().downloadItem;
     if (!item) return;
     try {
-      await invoke('cancel_download', { id: item.id });
+      await dataService.cancelDownload(item.id);
       set({ isDownloading: false });
     } catch (e) {
       logger.error('Failed to cancel download', { error: e });

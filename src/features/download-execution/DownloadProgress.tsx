@@ -1,7 +1,7 @@
 import { Progress } from "@/components/ui/progress";
 import { X, FolderOpen, RotateCcw, ImageIcon, CheckCircle2, AlertCircle } from "lucide-react";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
-import { openInExplorer } from "@/lib/tauri";
+import { dataService } from "@/shared/lib/data-service";
 
 const statusColors: Record<string, string> = {
   Queued: "text-muted-foreground",
@@ -125,7 +125,7 @@ export function DownloadProgress({ big }: Props) {
           )}
           {st === "Completed" && downloadItem.output_path && (
             <button
-              onClick={() => openInExplorer(downloadItem.output_path)}
+              onClick={() => dataService.openInExplorer(downloadItem.output_path)}
               className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8"
               title="Open in Explorer"
             >
