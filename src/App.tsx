@@ -88,7 +88,7 @@ export default function App() {
           <DownloadPage />
         </main>
       </div>
-      <Toaster />
+      <Toaster theme={theme} />
     </>
   )
 }

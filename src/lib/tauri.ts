@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 
 export interface VideoMeta {
   title: string;
@@ -109,14 +108,6 @@ export async function cancelDownload(id: string): Promise<boolean> {
   return invoke("cancel_download", { id });
 }
 
-export async function getQueue(): Promise<DownloadItem[]> {
-  return invoke("get_queue");
-}
-
-export async function removeFromQueue(id: string): Promise<boolean> {
-  return invoke("remove_from_queue", { id });
-}
-
 export async function getSettings(): Promise<AppSettings> {
   return invoke("get_settings");
 }
@@ -135,12 +126,4 @@ export async function updateYtdlp(): Promise<string> {
 
 export async function openInExplorer(path: string): Promise<void> {
   return invoke("open_in_explorer", { path });
-}
-
-export function onDownloadProgress(
-  callback: (data: DownloadItem) => void
-) {
-  return listen<DownloadItem>("download-progress", (event) => {
-    callback(event.payload);
-  });
 }
