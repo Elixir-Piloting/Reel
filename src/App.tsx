@@ -4,7 +4,7 @@ import { DownloadPage } from "@/pages/DownloadPage"
 import { Toaster } from "@/components/ui/sonner"
 import { useSettingsStore } from "@/stores/settings-store"
 import { useDownloadStore } from "@/stores/download-store"
-import { TooltipProvider } from "@/components/ui/tooltip"
+
 
 type Theme = "system" | "light" | "dark"
 
@@ -58,7 +58,7 @@ export default function App() {
   }, [theme])
 
   return (
-    <TooltipProvider>
+    <>
       <div className="min-h-screen bg-background">
         <header className="flex h-14 items-center justify-between border-b px-6">
           <div className="flex items-center gap-2.5">
@@ -89,6 +89,6 @@ export default function App() {
         </main>
       </div>
       <Toaster />
-    </TooltipProvider>
+    </>
   )
 }
