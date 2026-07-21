@@ -37,6 +37,17 @@ export function RangeSelector() {
 
   if (!metadata) return null;
 
+  const isLiveStream = !metadata.duration || metadata.duration === 0;
+
+  if (isLiveStream) {
+    return (
+      <div className="space-y-2">
+        <Label className="text-sm text-muted-foreground">Duration Range</Label>
+        <p className="text-sm text-muted-foreground">Live stream — full duration will be downloaded</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-2">
       <Label className="text-sm text-muted-foreground">Duration Range</Label>

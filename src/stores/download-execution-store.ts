@@ -4,6 +4,10 @@ import { dataService } from '../shared/lib/data-service';
 import { logger } from '../shared/lib/logger';
 import { useAnalysisStore } from './analysis-store';
 import { useOptionsStore } from './options-store';
+import { usePlaylistStore } from './playlist-store';
+import { notify } from '../features/notifications/notificationService';
+import { Deferred } from '../shared/lib/deferred';
+import { toast } from 'sonner';
 
 interface DownloadItem {
   id: string;
@@ -66,6 +70,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>((set, ge
         encoding,
       });
       set({ downloadItem: item });
+      notify.downloadStarted(metadata.title);
     } catch (e) {
       logger.error('Failed to start download', { error: e });
       set({ isDownloading: false, downloadStatus: 'Failed' });
@@ -73,7 +78,56 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>((set, ge
   },
 
   startPlaylistDownload: async () => {
-    // Will be wired in Phase 5
+    const { entries, selectedIndices, setItemProgress, itemProgress } = usePlaylistStore.getState();
+    const { downloadType, selectedQuality, encoding, premiereMode, outputDir } = useOptionsStore.getState();
+    const { url, metadata } = useAnalysisStore.getState();
+
+    if (!url || entries.length === 0) return;
+    set({ isDownloading: true, downloadProgress: 0, downloadStatus: 'Queued' });
+
+    for (const idx of selectedIndices) {
+      const entry = entries[idx];
+      setItemProgress(idx, { status: 'queued', progress: 0, speed: '', eta: '' });
+    }
+
+    for (const idx of selectedIndices) {
+      const entry = entries[idx];
+      setItemProgress(idx, { status: 'downloading', progress: 0, speed: '', eta: '' });
+
+      try {
+        const item = await dataService.enqueueDownload({
+          url: entry.url,
+          format_id: selectedQuality,
+          filename: entry.title,
+          output_dir: outputDir,
+          start_time: null,
+          end_time: null,
+          premiere_mode: premiereMode,
+          download_type: downloadType === 'video' ? 'Video' : 'Audio',
+          video_title: entry.title,
+          thumbnail_url: entry.thumbnail,
+          has_audio: downloadType === 'video',
+          encoding,
+        });
+
+        const deferred = new Deferred<void>();
+        const unsub = await listen<any>('download-item-update', (e) => {
+          if (e.payload.id === item.id && ['completed', 'failed', 'cancelled'].includes(e.payload.status)) {
+            deferred.resolve();
+          }
+        });
+        await deferred.promise;
+        unsub();
+
+        const finalItem = get().downloadItem;
+        const finalStatus = finalItem?.id === item.id && finalItem?.status === 'Completed' ? 'completed' : 'failed';
+        setItemProgress(idx, { status: finalStatus, progress: finalStatus === 'completed' ? 100 : 0, speed: '', eta: '' });
+      } catch (e) {
+        setItemProgress(idx, { status: 'failed', progress: 0, speed: '', eta: '', error: String(e) });
+      }
+    }
+
+    set({ isDownloading: false });
   },
 
   cancelDownload: async () => {
@@ -110,7 +164,19 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>((set, ge
       },
     );
     const unlistenItem = await listen<DownloadItem>('download-item-update', (event) => {
-      set({ downloadItem: event.payload });
+      const prev = get().downloadItem;
+      const payload = event.payload;
+      set({ downloadItem: payload });
+
+      if (payload.status === 'Completed' && prev?.status !== 'Completed') {
+        const title = payload.title || get().downloadItem?.title || '';
+        notify.downloadComplete(title, () => dataService.openInExplorer(payload.output_path));
+        toast.dismiss('download');
+      } else if (payload.status === 'Failed' && prev?.status !== 'Failed') {
+        const title = payload.title || get().downloadItem?.title || '';
+        notify.downloadFailed(title, String(payload.status), () => get().startDownload());
+        toast.dismiss('download');
+      }
     });
     return () => {
       unlistenProgress();

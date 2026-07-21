@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { VideoMeta, FormatInfo, AnalyzeResponse } from '../shared/lib/types';
 import { dataService } from '../shared/lib/data-service';
 import { logger } from '../shared/lib/logger';
+import { notify } from '../features/notifications/notificationService';
 
 export type Phase = 'idle' | 'analyzing' | 'ready' | 'playlist' | 'downloading' | 'completed' | 'error';
 
@@ -44,12 +45,18 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     try {
       const result = await dataService.analyzeVideo(url);
       if (gen !== analyzeGen) return;
+      const isPlaylist = !!result.playlist_entries?.length;
       set({
         metadata: result.video_meta,
         formats: result.formats || [],
-        phase: result.playlist_entries?.length ? 'playlist' : 'ready',
+        phase: isPlaylist ? 'playlist' : 'ready',
       });
       get().buildQualityOptions(result.formats || []);
+      if (isPlaylist) {
+        notify.playlistFound(result.playlist_entries!.length);
+      } else if (result.video_meta) {
+        notify.analysisComplete(result.video_meta.title);
+      }
     } catch (e) {
       if (gen !== analyzeGen) return;
       set({ phase: 'error', error: String(e) });
