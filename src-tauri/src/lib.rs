@@ -1,4 +1,6 @@
 mod commands;
+mod error;
+mod logging;
 mod models;
 mod queue;
 

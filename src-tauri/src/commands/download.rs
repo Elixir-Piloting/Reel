@@ -28,7 +28,13 @@ fn save_queue(app: &AppHandle, queue: &SharedQueue) {
 pub fn load_saved_queue(app: &AppHandle, queue: &SharedQueue) {
     let path = queue_path(app);
     if let Ok(json) = std::fs::read_to_string(&path) {
-        if let Ok(items) = serde_json::from_str::<Vec<DownloadItem>>(&json) {
+        if let Ok(mut items) = serde_json::from_str::<Vec<DownloadItem>>(&json) {
+            // Mark any in-flight items as failed (app was closed)
+            for item in items.iter_mut() {
+                if item.status == DownloadStatus::Queued || item.status == DownloadStatus::Downloading {
+                    item.status = DownloadStatus::Failed("App was closed".to_string());
+                }
+            }
             if let Ok(mut q) = queue.lock() {
                 q.items = items;
             }
@@ -69,14 +75,14 @@ pub async fn enqueue_download(
     active: State<'_, ActiveProcesses>,
     request: DownloadRequest,
 ) -> Result<DownloadItem, String> {
-    eprintln!("[enqueue_download] INVOKED");
-    eprintln!("[enqueue_download] url={:?} format_id={:?} download_type={:?} output_dir={:?}",
-        request.url, request.format_id, request.download_type, request.output_dir);
-    eprintln!("[enqueue_download] filename={:?} premiere_mode={:?} has_audio={:?}",
-        request.filename, request.premiere_mode, request.has_audio);
+    crate::logging::log_info(&format!("[enqueue_download] INVOKED"));
+    crate::logging::log_info(&format!("[enqueue_download] url={:?} format_id={:?} download_type={:?} output_dir={:?}",
+        request.url, request.format_id, request.download_type, request.output_dir));
+    crate::logging::log_info(&format!("[enqueue_download] filename={:?} premiere_mode={:?} has_audio={:?}",
+        request.filename, request.premiere_mode, request.has_audio));
 
     let id = Uuid::new_v4().to_string();
-    eprintln!("[enqueue_download] generated id={}", id);
+    crate::logging::log_info(&format!("[enqueue_download] generated id={}", id));
 
     let safe_name = sanitize_filename(&request.filename);
     let ext = match request.encoding.as_str() {
@@ -109,17 +115,17 @@ pub async fn enqueue_download(
         download_type: dt_str,
         has_audio: request.has_audio,
     };
-    eprintln!("[enqueue_download] item created {:?}", item.id);
+    crate::logging::log_info(&format!("[enqueue_download] item created {:?}", item.id));
 
     let sq = queue.inner().clone();
     {
-        let mut q = queue.lock().map_err(|e| { eprintln!("[enqueue_download] lock error: {}", e); e.to_string() })?;
+        let mut q = queue.lock().map_err(|e| { crate::logging::log_error(&format!("[enqueue_download] lock error: {}", e)); e.to_string() })?;
         q.push(item.clone());
-        eprintln!("[enqueue_download] item pushed to queue ({} items)", q.items.len());
+        crate::logging::log_info(&format!("[enqueue_download] item pushed to queue ({} items)", q.items.len()));
     }
     save_queue(&app, &sq);
     emit_item_update(&app, queue.inner(), &id);
-    eprintln!("[enqueue_download] item-update event emitted");
+    crate::logging::log_info("[enqueue_download] item-update event emitted");
 
     let app_clone = app.clone();
     let queue_clone = queue.inner().clone();
@@ -128,11 +134,11 @@ pub async fn enqueue_download(
     req.filename = resolved_base;
     let item_id = id.clone();
 
-    eprintln!("[enqueue_download] spawning process_download task...");
+    crate::logging::log_info("[enqueue_download] spawning process_download task...");
     tauri::async_runtime::spawn(async move {
         process_download(app_clone, queue_clone, active_clone, *req, item_id).await;
     });
-    eprintln!("[enqueue_download] returning Ok(item)");
+    crate::logging::log_info("[enqueue_download] returning Ok(item)");
 
     Ok(item)
 }
@@ -144,9 +150,9 @@ async fn process_download(
     request: DownloadRequest,
     id: String,
 ) {
-    eprintln!("[process_download] STARTED for id={}", id);
-    eprintln!("[process_download] url={:?} format_id={:?} download_type={:?} output_dir={:?}",
-        request.url, request.format_id, request.download_type, request.output_dir);
+    crate::logging::log_info(&format!("[process_download] STARTED for id={}", id));
+    crate::logging::log_info(&format!("[process_download] url={:?} format_id={:?} download_type={:?} output_dir={:?}",
+        request.url, request.format_id, request.download_type, request.output_dir));
 
     // Mark as downloading
     {
@@ -156,9 +162,9 @@ async fn process_download(
         });
     }
     save_queue(&app, &queue);
-    eprintln!("[process_download] status set to Downloading");
+    crate::logging::log_info("[process_download] status set to Downloading");
     emit_progress(&app, &id, 0.0, "", "", "Downloading");
-    eprintln!("[process_download] progress event emitted (0.0)");
+    crate::logging::log_info("[process_download] progress event emitted (0.0)");
 
     let output_dir = request.output_dir.clone();
     let premiere_mode = request.premiere_mode;
@@ -169,7 +175,7 @@ async fn process_download(
 
     'retry: loop {
         attempt += 1;
-        eprintln!("[process_download] attempt {}/{}", attempt, max_attempts);
+        crate::logging::log_info(&format!("[process_download] attempt {}/{}", attempt, max_attempts));
 
         let mut args: Vec<String> = Vec::new();
         let embed_thumbnail = attempt == 1;
@@ -245,20 +251,20 @@ async fn process_download(
         let url = request.url.clone();
         args.push(url);
 
-        eprintln!("[process_download] Spawning yt-dlp sidecar with {} args", args.len());
+        crate::logging::log_info(&format!("[process_download] Spawning yt-dlp sidecar with {} args", args.len()));
         for (i, arg) in args.iter().enumerate() {
-            eprintln!("[process_download]   arg[{}] = {:?}", i, arg);
+            crate::logging::log_info(&format!("[process_download]   arg[{}] = {:?}", i, arg));
         }
 
         let (mut rx, child) = match app.shell().sidecar("yt-dlp") {
             Ok(cmd) => match cmd.args(&args).spawn() {
                 Ok(pair) => {
-                    eprintln!("[process_download] yt-dlp process spawned OK");
+                    crate::logging::log_info("[process_download] yt-dlp process spawned OK");
                     pair
                 },
                 Err(e) => {
                     let msg = format!("Failed to start yt-dlp: {}", e);
-                    eprintln!("[process_download] ERROR spawning yt-dlp: {}", e);
+                    crate::logging::log_error(&format!("[process_download] ERROR spawning yt-dlp: {}", e));
                     if attempt >= max_attempts {
                         let mut q = queue.lock().unwrap();
                         q.update(&id, |item| {
@@ -266,14 +272,14 @@ async fn process_download(
                         });
                         emit_progress(&app, &id, 0.0, "", "", &msg);
                     } else {
-                        eprintln!("[process_download] will retry after spawn error");
+                        crate::logging::log_info("[process_download] will retry after spawn error");
                     }
                     if attempt >= max_attempts { return; } else { continue 'retry; }
                 }
             },
             Err(e) => {
                 let msg = format!("Sidecar not found: {}", e);
-                eprintln!("[process_download] ERROR sidecar not found: {}", e);
+                crate::logging::log_error(&format!("[process_download] ERROR sidecar not found: {}", e));
                 let mut q = queue.lock().unwrap();
                 q.update(&id, |item| {
                     item.status = DownloadStatus::Failed(msg.clone());
@@ -286,14 +292,14 @@ async fn process_download(
         {
             let mut procs = active.lock().unwrap();
             procs.insert(id.clone(), child);
-            eprintln!("[process_download] child process stored for cancellation");
+            crate::logging::log_info("[process_download] child process stored for cancellation");
         }
 
         let mut last_progress: f64 = 0.0;
         let mut error_lines: Vec<String> = Vec::new();
         let mut line_count = 0u64;
 
-        eprintln!("[process_download] entering streaming loop...");
+        crate::logging::log_info("[process_download] entering streaming loop...");
 
         while let Some(event) = rx.recv().await {
             line_count += 1;
@@ -301,7 +307,7 @@ async fn process_download(
                 CommandEvent::Stdout(line) => {
                     let text = String::from_utf8_lossy(&line);
                     if line_count <= 3 {
-                        eprintln!("[process_download] stdout[{}] = {:?}", line_count, text);
+                        crate::logging::log_info(&format!("[process_download] stdout[{}] = {:?}", line_count, text));
                     }
                     if let Some(info) = parse_progress(&text) {
                         last_progress = info.percent;
@@ -320,7 +326,7 @@ async fn process_download(
                 CommandEvent::Stderr(line) => {
                     let text = String::from_utf8_lossy(&line);
                     if line_count <= 5 {
-                        eprintln!("[process_download] stderr[{}] = {:?}", line_count, text);
+                        crate::logging::log_info(&format!("[process_download] stderr[{}] = {:?}", line_count, text));
                     }
                     if let Some(info) = parse_progress(&text) {
                         last_progress = info.percent;
@@ -342,16 +348,16 @@ async fn process_download(
                     }
                 }
                 CommandEvent::Terminated(payload) => {
-                    eprintln!("[process_download] Terminated event: code={:?} signal={:?}", payload.code, payload.signal);
+                    crate::logging::log_info(&format!("[process_download] Terminated event: code={:?} signal={:?}", payload.code, payload.signal));
                     {
                         let mut procs = active.lock().unwrap();
                         procs.remove(&id);
-                        eprintln!("[process_download] child removed from active processes");
+                        crate::logging::log_info("[process_download] child removed from active processes");
                     }
                     emit_item_update(&app, &queue, &id);
 
                     if payload.code == Some(0) {
-                        eprintln!("[process_download] yt-dlp completed successfully");
+                        crate::logging::log_info("[process_download] yt-dlp completed successfully");
                         if premiere_mode && download_type == DownloadType::Video {
                             {
                                 let mut q = queue.lock().unwrap();
@@ -407,14 +413,14 @@ async fn process_download(
                             });
                         }
                         save_queue(&app, &queue);
-                        eprintln!("[process_download] status set to Completed");
+                        crate::logging::log_info("[process_download] status set to Completed");
                         emit_progress(&app, &id, 100.0, "", "", "Completed");
                         emit_item_update(&app, &queue, &id);
-                        eprintln!("[process_download] DONE (success)");
+                        crate::logging::log_info("[process_download] DONE (success)");
                         return;
                     } else if let Some(code) = payload.code {
                         if code == -1 {
-                            eprintln!("[process_download] process cancelled (code -1)");
+                            crate::logging::log_info("[process_download] process cancelled (code -1)");
                             emit_progress(&app, &id, last_progress, "", "", "Cancelled");
                             return;
                         } else {
@@ -424,9 +430,9 @@ async fn process_download(
                             } else {
                                 format!("{} (code {})", detail, code)
                             };
-                            eprintln!("[process_download] process failed: {}", error);
+                            crate::logging::log_error(&format!("[process_download] process failed: {}", error));
                             if attempt < max_attempts {
-                                eprintln!("[process_download] retrying without --embed-thumbnail/--add-metadata");
+                                crate::logging::log_info("[process_download] retrying without --embed-thumbnail/--add-metadata");
                                 continue 'retry;
                             }
                             let mut q = queue.lock().unwrap();
@@ -435,14 +441,14 @@ async fn process_download(
                             });
                             save_queue(&app, &queue);
                             emit_progress(&app, &id, last_progress, "", "", &format!("Failed: {}", error));
-                            eprintln!("[process_download] DONE (exit)");
+                            crate::logging::log_info("[process_download] DONE (exit)");
                             return;
                         }
                     } else {
                         let error = "yt-dlp was terminated by signal".to_string();
-                        eprintln!("[process_download] process terminated by signal");
+                        crate::logging::log_error("[process_download] process terminated by signal");
                         if attempt < max_attempts {
-                            eprintln!("[process_download] retrying without --embed-thumbnail/--add-metadata");
+                            crate::logging::log_info("[process_download] retrying without --embed-thumbnail/--add-metadata");
                             continue 'retry;
                         }
                         let mut q = queue.lock().unwrap();
@@ -450,7 +456,7 @@ async fn process_download(
                             item.status = DownloadStatus::Failed(error.clone());
                         });
                         emit_progress(&app, &id, last_progress, "", "", &format!("Failed: {}", error));
-                        eprintln!("[process_download] DONE (exit)");
+                        crate::logging::log_info("[process_download] DONE (exit)");
                         return;
                     }
                 }
@@ -458,7 +464,7 @@ async fn process_download(
             }
         }
 
-        eprintln!("[process_download] streaming loop ended (rx stream closed)");
+        crate::logging::log_info("[process_download] streaming loop ended (rx stream closed)");
         return;
     }
 }
