@@ -1,4 +1,7 @@
-import { useDownloadStore } from "@/stores/download-store";
+import { useAnalysisStore } from "@/stores/analysis-store";
+import { useOptionsStore } from "@/stores/options-store";
+import { useDownloadExecutionStore } from "@/stores/download-execution-store";
+import { usePlaylistStore } from "@/stores/playlist-store";
 import { UrlInput } from "@/components/download/UrlInput";
 import { VideoInfo } from "@/components/download/VideoInfo";
 import { DownloadTypeSelector } from "@/components/download/DownloadTypeSelector";
@@ -13,13 +16,18 @@ import { Button } from "@/components/ui/button";
 import { Download, RotateCcw } from "lucide-react";
 
 export function DownloadPage() {
-  const {
-    phase, metadata, error, outputDir, isDownloading,
-    startDownload, reset, setError, playlistItemProgress,
-  } = useDownloadStore();
+  const phase = useAnalysisStore((s) => s.phase);
+  const metadata = useAnalysisStore((s) => s.metadata);
+  const error = useAnalysisStore((s) => s.error);
+  const setError = useAnalysisStore((s) => s.setError);
+  const outputDir = useOptionsStore((s) => s.outputDir);
+  const isDownloading = useDownloadExecutionStore((s) => s.isDownloading);
+  const startDownload = useDownloadExecutionStore((s) => s.startDownload);
+  const reset = useDownloadExecutionStore((s) => s.reset);
+  const itemProgress = usePlaylistStore((s) => s.itemProgress);
   const dir = outputDir;
   const canDownload = phase === "ready" && !!dir && !isDownloading;
-  const isPlaylistDownload = playlistItemProgress.length > 0;
+  const isPlaylistDownload = Object.keys(itemProgress).length > 0;
 
   if (phase === "idle") {
     return (

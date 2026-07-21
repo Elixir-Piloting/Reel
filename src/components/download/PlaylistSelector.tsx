@@ -1,19 +1,31 @@
-import { useDownloadStore } from "@/stores/download-store";
+import { useAnalysisStore } from "@/stores/analysis-store";
+import { useOptionsStore } from "@/stores/options-store";
+import { useDownloadExecutionStore } from "@/stores/download-execution-store";
+import { usePlaylistStore } from "@/stores/playlist-store";
 import { formatDuration } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CheckSquare, Square, Download, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
 export function PlaylistSelector() {
-  const {
-    metadata, playlistEntries, selectedEntryIndices, selectAllPlaylist,
-    toggleEntry, toggleSelectAll, downloadType, setDownloadType,
-    selectedQuality, setSelectedQuality, qualityOptions,
-    startPlaylistDownload, isDownloading, phase, playlistItemProgress,
-  } = useDownloadStore();
+  const metadata = useAnalysisStore((s) => s.metadata);
+  const phase = useAnalysisStore((s) => s.phase);
+  const qualityOptions = useAnalysisStore((s) => s.qualityOptions);
+  const downloadType = useOptionsStore((s) => s.downloadType);
+  const setDownloadType = useOptionsStore((s) => s.setDownloadType);
+  const selectedQuality = useOptionsStore((s) => s.selectedQuality);
+  const setSelectedQuality = useOptionsStore((s) => s.setSelectedQuality);
+  const startPlaylistDownload = useDownloadExecutionStore((s) => s.startPlaylistDownload);
+  const isDownloading = useDownloadExecutionStore((s) => s.isDownloading);
+  const entries = usePlaylistStore((s) => s.entries);
+  const selectedIndices = usePlaylistStore((s) => s.selectedIndices);
+  const selectAll = usePlaylistStore((s) => s.selectAll);
+  const toggleEntry = usePlaylistStore((s) => s.toggleEntry);
+  const toggleSelectAll = usePlaylistStore((s) => s.toggleSelectAll);
+  const itemProgress = usePlaylistStore((s) => s.itemProgress);
 
-  const count = selectedEntryIndices.size;
+  const count = selectedIndices.length;
 
-  if (!metadata || playlistEntries.length === 0) return null;
+  if (!metadata || entries.length === 0) return null;
 
   return (
     <div className="space-y-4">
@@ -21,22 +33,22 @@ export function PlaylistSelector() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-base">{metadata.playlist_title || "Playlist"}</h2>
-            <p className="text-xs text-muted-foreground">{playlistEntries.length} videos</p>
+            <p className="text-xs text-muted-foreground">{entries.length} videos</p>
           </div>
           {phase === "playlist" && (
             <button
               onClick={toggleSelectAll}
               className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              {selectAllPlaylist ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-              {selectAllPlaylist ? "Deselect All" : "Select All"}
+              {selectAll ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+              {selectAll ? "Deselect All" : "Select All"}
             </button>
           )}
         </div>
 
         <div className="space-y-1 max-h-80 overflow-y-auto">
-          {playlistEntries.map((entry, idx) => {
-            const progressItem = playlistItemProgress[idx];
+          {entries.map((entry, idx) => {
+            const progressItem = itemProgress[idx];
             const isDownloaded = phase === "downloading" || phase === "completed";
             const status = progressItem?.status;
 
@@ -50,7 +62,7 @@ export function PlaylistSelector() {
                 {phase === "playlist" ? (
                   <input
                     type="checkbox"
-                    checked={selectedEntryIndices.has(idx)}
+                    checked={selectedIndices.includes(idx)}
                     onChange={() => toggleEntry(idx)}
                     className="accent-primary shrink-0"
                   />
@@ -87,7 +99,7 @@ export function PlaylistSelector() {
 
                 <div className="flex-1 min-w-0">
                   <p className="text-sm truncate">
-                    <span className="text-xs text-muted-foreground mr-1.5">#{entry.index || idx + 1}</span>
+                    <span className="text-xs text-muted-foreground mr-1.5">#{idx + 1}</span>
                     {entry.title}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -119,11 +131,11 @@ export function PlaylistSelector() {
               <label className="text-sm text-muted-foreground">Download Type</label>
               <select
                 value={downloadType}
-                onChange={(e) => setDownloadType(e.target.value as "audio-only" | "video+audio")}
+                onChange={(e) => setDownloadType(e.target.value as "video" | "audio")}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               >
-                <option value="video+audio">Video + Audio</option>
-                <option value="audio-only">Audio Only</option>
+                <option value="video">Video + Audio</option>
+                <option value="audio">Audio Only</option>
               </select>
             </div>
             <div className="space-y-1.5">

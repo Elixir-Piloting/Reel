@@ -1,4 +1,5 @@
-import { useDownloadStore } from "@/stores/download-store";
+import { useAnalysisStore } from "@/stores/analysis-store";
+import { useOptionsStore } from "@/stores/options-store";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -9,7 +10,10 @@ import {
 } from "@/components/ui/select";
 
 export function QualitySelector() {
-  const { qualityOptions, selectedQuality, setSelectedQuality, downloadType } = useDownloadStore();
+  const qualityOptions = useAnalysisStore((s) => s.qualityOptions);
+  const selectedQuality = useOptionsStore((s) => s.selectedQuality);
+  const setSelectedQuality = useOptionsStore((s) => s.setSelectedQuality);
+  const downloadType = useOptionsStore((s) => s.downloadType);
 
   if (qualityOptions.length === 0) return null;
 
@@ -23,9 +27,9 @@ export function QualitySelector() {
         <SelectContent>
           {qualityOptions.map((q) => (
             <SelectItem key={q.label} value={q.label}>
-              {downloadType === "audio-only"
+              {downloadType === "audio"
                 ? q.label
-                : `${q.label}${q.fps && q.fps > 30 ? ` ${q.fps}fps` : ""}${q.filesize ? ` (${(q.filesize / 1024 / 1024).toFixed(1)}MB)` : ""}`
+                : q.label
               }
             </SelectItem>
           ))}

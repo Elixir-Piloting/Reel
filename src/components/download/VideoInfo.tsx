@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { useDownloadStore } from "@/stores/download-store";
+import { useAnalysisStore } from "@/stores/analysis-store";
 import { formatDuration, formatDate } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function VideoInfo() {
-  const { metadata, phase, error } = useDownloadStore();
+  const metadata = useAnalysisStore((s) => s.metadata);
+  const phase = useAnalysisStore((s) => s.phase);
+  const error = useAnalysisStore((s) => s.error);
   const isAnalyzing = phase === "analyzing";
   const [imgLoaded, setImgLoaded] = useState(false);
 

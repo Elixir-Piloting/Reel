@@ -1,8 +1,9 @@
 import { Label } from "@/components/ui/label";
-import { useDownloadStore } from "@/stores/download-store";
+import { useOptionsStore } from "@/stores/options-store";
 
 export function DownloadTypeSelector() {
-  const { downloadType, setDownloadType } = useDownloadStore();
+  const downloadType = useOptionsStore((s) => s.downloadType);
+  const setDownloadType = useOptionsStore((s) => s.setDownloadType);
 
   return (
     <div className="space-y-2">
@@ -12,9 +13,9 @@ export function DownloadTypeSelector() {
           <input
             type="radio"
             name="download-type"
-            value="video+audio"
-            checked={downloadType === "video+audio"}
-            onChange={() => setDownloadType("video+audio")}
+            value="video"
+            checked={downloadType === "video"}
+            onChange={() => setDownloadType("video")}
             className="accent-primary"
           />
           <span className="text-sm">Video + Audio</span>
@@ -23,9 +24,9 @@ export function DownloadTypeSelector() {
           <input
             type="radio"
             name="download-type"
-            value="audio-only"
-            checked={downloadType === "audio-only"}
-            onChange={() => setDownloadType("audio-only")}
+            value="audio"
+            checked={downloadType === "audio"}
+            onChange={() => setDownloadType("audio")}
             className="accent-primary"
           />
           <span className="text-sm">Audio Only</span>

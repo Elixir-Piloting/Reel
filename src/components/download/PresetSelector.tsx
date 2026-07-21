@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, X } from "lucide-react";
-import { useDownloadStore } from "@/stores/download-store";
+import { usePresetStore } from "@/stores/preset-store";
+import { useOptionsStore } from "@/stores/options-store";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -13,13 +14,20 @@ import {
 } from "@/components/ui/select";
 
 export function PresetSelector() {
-  const { presets, selectedPresetId, selectPreset, addPreset, removePreset } = useDownloadStore();
+  const presets = usePresetStore((s) => s.presets);
+  const selectedPresetId = usePresetStore((s) => s.selectedPresetId);
+  const selectPreset = usePresetStore((s) => s.selectPreset);
+  const addPreset = usePresetStore((s) => s.addPreset);
+  const removePreset = usePresetStore((s) => s.removePreset);
+  const downloadType = useOptionsStore((s) => s.downloadType);
+  const encoding = useOptionsStore((s) => s.encoding);
+  const premiereMode = useOptionsStore((s) => s.premiereMode);
   const [showSave, setShowSave] = useState(false);
   const [presetName, setPresetName] = useState("");
 
   const handleSave = () => {
     if (presetName.trim()) {
-      addPreset(presetName.trim());
+      addPreset(presetName.trim(), { downloadType, encoding, premiereMode });
       setPresetName("");
       setShowSave(false);
     }

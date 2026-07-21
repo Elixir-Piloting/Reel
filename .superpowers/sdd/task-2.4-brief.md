@@ -1,3 +1,11 @@
+### Task 2.4: Create `useDownloadExecutionStore`
+
+**Files:**
+- Create: `src/stores/download-execution-store.ts`
+
+Extracts from `download-store.ts`: `isDownloading`, `downloadProgress`, `downloadSpeed`, `downloadEta`, `downloadStatus`, `downloadItem`, `completedFileName`, `playlistItemProgress`, `phase` (downloading/completed parts), and actions `startDownload`, `cancelDownload`, `reset`, `initProgressListener`.
+
+```typescript
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
@@ -26,7 +34,6 @@ interface DownloadExecutionState {
 
   setDownloading: (v: boolean) => void;
   startDownload: () => Promise<void>;
-  startPlaylistDownload: () => Promise<void>;
   cancelDownload: () => Promise<void>;
   reset: () => void;
   initProgressListener: () => Promise<() => void>;
@@ -47,16 +54,12 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>((set, ge
     // Will be wired up in Phase 5 with the hook pattern
   },
 
-  startPlaylistDownload: async () => {
-    // Will be wired in Phase 5
-  },
-
   cancelDownload: async () => {
     const item = get().downloadItem;
     if (!item) return;
     try {
       await invoke('cancel_download', { id: item.id });
-      set({ isDownloading: false });
+      set({ isDownloading: false, phase: 'ready' });
     } catch (e) {
       logger.error('Failed to cancel download', { error: e });
     }
@@ -93,3 +96,8 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>((set, ge
     };
   },
 }));
+```
+
+- [ ] **Create `download-execution-store.ts`** with stubs for `startDownload` (will fill in Phase 5).
+- [ ] **Verify build** — `npx tsc --noEmit` passes.
+

@@ -1,11 +1,16 @@
 import { useCallback, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useDownloadStore } from "@/stores/download-store";
+import { useOptionsStore } from "@/stores/options-store";
+import { useAnalysisStore } from "@/stores/analysis-store";
 import { formatTimeInput, timeToSeconds } from "@/lib/utils";
 
 export function RangeSelector() {
-  const { startTime, endTime, setStartTime, setEndTime, metadata } = useDownloadStore();
+  const startTime = useOptionsStore((s) => s.startTime);
+  const endTime = useOptionsStore((s) => s.endTime);
+  const setStartTime = useOptionsStore((s) => s.setStartTime);
+  const setEndTime = useOptionsStore((s) => s.setEndTime);
+  const metadata = useAnalysisStore((s) => s.metadata);
   const maxTime = metadata?.duration || 0;
   const trackRef = useRef<HTMLDivElement>(null);
 

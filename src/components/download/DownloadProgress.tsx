@@ -1,6 +1,6 @@
 import { Progress } from "@/components/ui/progress";
 import { X, FolderOpen, RotateCcw, ImageIcon, CheckCircle2, AlertCircle } from "lucide-react";
-import { useDownloadStore } from "@/stores/download-store";
+import { useDownloadExecutionStore } from "@/stores/download-execution-store";
 import { openInExplorer } from "@/lib/tauri";
 
 const statusColors: Record<string, string> = {
@@ -28,7 +28,15 @@ interface Props {
 }
 
 export function DownloadProgress({ big }: Props) {
-  const { downloadItem, downloadProgress, downloadSpeed, downloadEta, downloadStatus, isDownloading, cancelDownload, startDownload, completedFileName } = useDownloadStore();
+  const downloadItem = useDownloadExecutionStore((s) => s.downloadItem);
+  const downloadProgress = useDownloadExecutionStore((s) => s.downloadProgress);
+  const downloadSpeed = useDownloadExecutionStore((s) => s.downloadSpeed);
+  const downloadEta = useDownloadExecutionStore((s) => s.downloadEta);
+  const downloadStatus = useDownloadExecutionStore((s) => s.downloadStatus);
+  const isDownloading = useDownloadExecutionStore((s) => s.isDownloading);
+  const cancelDownload = useDownloadExecutionStore((s) => s.cancelDownload);
+  const startDownload = useDownloadExecutionStore((s) => s.startDownload);
+  const completedFileName = useDownloadExecutionStore((s) => s.completedFileName);
 
   if (!downloadItem && !isDownloading) return null;
   if (!downloadItem) {
@@ -58,9 +66,9 @@ export function DownloadProgress({ big }: Props) {
     <div className={`rounded-lg border bg-card overflow-hidden ${big ? "ring-1 ring-primary/20" : ""}`}>
       <div className="flex items-stretch gap-0">
         <div className={`shrink-0 bg-muted flex items-center justify-center overflow-hidden aspect-video ${big ? "w-32" : "w-20"}`}>
-          {downloadItem.thumbnail_url ? (
+          {(downloadItem as unknown as Record<string, unknown>).thumbnail_url ? (
             <img
-              src={downloadItem.thumbnail_url}
+              src={(downloadItem as unknown as Record<string, unknown>).thumbnail_url as string}
               alt=""
               className="w-full h-full object-cover"
               loading="lazy"

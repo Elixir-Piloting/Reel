@@ -1,4 +1,4 @@
-import { useDownloadStore } from "@/stores/download-store";
+import { useOptionsStore } from "@/stores/options-store";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -24,8 +24,10 @@ const AUDIO_ENCODINGS = [
 ];
 
 export function EncodingSelector() {
-  const { downloadType, encoding, setEncoding } = useDownloadStore();
-  const options = downloadType === "audio-only" ? AUDIO_ENCODINGS : VIDEO_ENCODINGS;
+  const downloadType = useOptionsStore((s) => s.downloadType);
+  const encoding = useOptionsStore((s) => s.encoding);
+  const setEncoding = useOptionsStore((s) => s.setEncoding);
+  const options = downloadType === "audio" ? AUDIO_ENCODINGS : VIDEO_ENCODINGS;
 
   return (
     <div className="space-y-1.5">

@@ -1,9 +1,12 @@
 import { ClipboardPaste, Loader2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useDownloadStore } from "@/stores/download-store";
+import { useAnalysisStore } from "@/stores/analysis-store";
 
 export function UrlInput() {
-  const { url, setUrl, analyzeUrl, phase } = useDownloadStore();
+  const url = useAnalysisStore((s) => s.url);
+  const setUrl = useAnalysisStore((s) => s.setUrl);
+  const analyzeUrl = useAnalysisStore((s) => s.analyzeUrl);
+  const phase = useAnalysisStore((s) => s.phase);
   const isAnalyzing = phase === "analyzing";
 
   const handlePaste = async () => {

@@ -3,7 +3,7 @@ import { Download, Sun, Moon, Monitor } from "lucide-react"
 import { DownloadPage } from "@/pages/DownloadPage"
 import { Toaster } from "@/components/ui/sonner"
 import { useSettingsStore } from "@/stores/settings-store"
-import { useDownloadStore } from "@/stores/download-store"
+import { useDownloadExecutionStore } from "@/stores/download-execution-store"
 
 
 type Theme = "system" | "light" | "dark"
@@ -35,12 +35,12 @@ const themes: { value: Theme; icon: React.ReactNode; label: string }[] = [
 export default function App() {
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
   const { loadSettings } = useSettingsStore()
-  const initProgressListener = useDownloadStore((s) => s.initProgressListener)
+  const initProgressListener = useDownloadExecutionStore((s) => s.initProgressListener)
 
   useEffect(() => {
     loadSettings()
-    const cleanup = initProgressListener()
-    return () => cleanup()
+    const p = initProgressListener()
+    return () => { p.then((fn) => fn()) }
   }, [])
 
   useEffect(() => {
