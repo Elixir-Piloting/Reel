@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { dataService } from "@/shared/lib/data-service";
-import { FolderOpen, RotateCcw, Trash2, X, ImageIcon, Ban } from "lucide-react";
+import { FolderOpen, RotateCcw, Trash2, X, ImageIcon, Ban, XCircle } from "lucide-react";
 import { CheckCircleIcon } from "@phosphor-icons/react";
 import type { DownloadItem } from "@/shared/lib/types";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
@@ -108,8 +108,9 @@ export function HistoryPanel({ onClose }: HistoryPanelProps) {
             const st = typeof item.status === 'string' ? item.status : '';
             const active = ['Queued', 'Downloading', 'Merging', 'Converting'].includes(st);
             const completed = st === 'Completed';
+            const cancelled = st === 'Cancelled';
             return (
-              <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg bg-elevated shadow-card">
+              <div key={item.id} className={`flex items-start gap-3 p-3 rounded-lg bg-elevated shadow-card ${cancelled ? 'opacity-60' : ''}`}>
                 {item.thumbnail_url ? (
                   <div className="w-32 shrink-0 rounded overflow-hidden bg-muted aspect-video">
                     <img src={item.thumbnail_url} alt="" className="w-full h-full object-cover" loading="lazy" />
@@ -129,12 +130,16 @@ export function HistoryPanel({ onClose }: HistoryPanelProps) {
                     {completed && (
                       <CheckCircleIcon size={20} className="text-green-500 shrink-0" weight="fill" />
                     )}
+                    {cancelled && (
+                      <XCircle className="w-4 h-4 text-destructive shrink-0" />
+                    )}
                     {st === 'Failed' && (
                       <span className="text-xs text-destructive">Failed</span>
                     )}
-                    <span className={`text-xs ${active ? 'text-muted-foreground' : completed ? 'text-muted-foreground' : ''}`}>
+                    <span className={`text-xs ${active ? 'text-muted-foreground' : completed ? 'text-muted-foreground' : cancelled ? 'text-destructive' : ''}`}>
                       {active && `downloading ${item.progress.toFixed(0)}%`}
                       {completed && 'downloaded'}
+                      {cancelled && 'Cancelled'}
                     </span>
                     {(st === 'Queued' || st === 'Merging' || st === 'Converting') && (
                       <span className="text-xs text-muted-foreground capitalize">{st.toLowerCase()}</span>
@@ -151,7 +156,7 @@ export function HistoryPanel({ onClose }: HistoryPanelProps) {
                       <Ban className="w-4 h-4" />
                     </button>
                   )}
-                  {completed && item.output_path && (
+                  {(completed || cancelled) && item.output_path && (
                     <button
                       onClick={() => dataService.openInExplorer(item.output_path)}
                       className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
@@ -160,7 +165,7 @@ export function HistoryPanel({ onClose }: HistoryPanelProps) {
                       <FolderOpen className="w-4 h-4" />
                     </button>
                   )}
-                  {completed && (
+                  {(completed || cancelled) && (
                     <button
                       onClick={async () => { await dataService.removeFromQueue(item.id); fetchHistory(); }}
                       className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"

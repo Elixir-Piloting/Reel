@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { Download, Sun, Moon, Monitor, Settings, X, ArrowLeft } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Sun, Moon, Monitor, Settings, ArrowLeft } from "lucide-react"
 import { DownloadSimple } from "@phosphor-icons/react"
 import { DownloadPage } from "@/pages/DownloadPage"
 import { SettingsPage } from "@/features/settings/SettingsPage"
@@ -7,6 +7,7 @@ import { HistoryPanel } from "@/features/download-history/HistoryPanel"
 import { Toaster } from "@/components/ui/sonner"
 import { useSettingsStore } from "@/stores/settings-store"
 import { useDownloadExecutionStore } from "@/stores/download-execution-store"
+import { dataService } from "@/shared/lib/data-service"
 
 
 type Theme = "system" | "light" | "dark"
@@ -39,14 +40,29 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
   const [showSettings, setShowSettings] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
+  const [activeCount, setActiveCount] = useState(0)
   const loadSettings = useSettingsStore((s) => s.loadSettings)
   const initProgressListener = useDownloadExecutionStore((s) => s.initProgressListener)
   const isDownloading = useDownloadExecutionStore((s) => s.isDownloading)
+  const setDownloading = useDownloadExecutionStore((s) => s.setDownloading)
 
   useEffect(() => {
     loadSettings()
     const p = initProgressListener()
-    return () => { p.then((fn) => fn()) }
+    const interval = setInterval(async () => {
+      try {
+        const q = await dataService.getQueue();
+        const active = q.filter((i: any) => {
+          const s = typeof i.status === 'string' ? i.status : '';
+          return ['Queued', 'Downloading', 'Merging', 'Converting'].includes(s);
+        });
+        setActiveCount(active.length);
+        if (active.length === 0 && useDownloadExecutionStore.getState().isDownloading) {
+          useDownloadExecutionStore.getState().setDownloading(false);
+        }
+      } catch {}
+    }, 3000);
+    return () => { clearInterval(interval); p.then((fn) => fn()) }
   }, [])
 
   useEffect(() => {
@@ -84,8 +100,8 @@ export default function App() {
           <div className="flex items-center gap-1">
             <button onClick={() => setShowHistory(true)} className="relative inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors" title="Downloads">
               <DownloadSimple className="size-5" weight="bold" />
-              {isDownloading && (
-                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-primary text-[10px] font-bold text-primary-foreground">1</span>
+              {activeCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-primary text-[10px] font-bold text-primary-foreground">{activeCount > 9 ? '9+' : activeCount}</span>
               )}
             </button>
             <button onClick={() => setShowSettings(true)} className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors" title="Settings">

@@ -1,4 +1,4 @@
-import { X, FolderOpen } from "lucide-react";
+import { X, FolderOpen, XCircle } from "lucide-react";
 import { CheckCircleIcon } from "@phosphor-icons/react";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
 import { dataService } from "@/shared/lib/data-service";
@@ -92,7 +92,10 @@ export function DownloadProgress({ big }: Props) {
               <span className="text-xs text-destructive">Failed</span>
             )}
             {st === "Cancelled" && (
-              <span className="text-xs text-muted-foreground">Cancelled</span>
+              <>
+                <XCircle size={20} className="text-destructive shrink-0" />
+                <span className="text-xs text-destructive">Cancelled</span>
+              </>
             )}
           </div>
         </div>

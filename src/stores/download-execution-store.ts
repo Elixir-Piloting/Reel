@@ -9,7 +9,6 @@ import { usePlaylistStore } from './playlist-store';
 import { useSettingsStore } from './settings-store';
 import { notify } from '../features/notifications/notificationService';
 import { Deferred } from '../shared/lib/deferred';
-import { toast } from 'sonner';
 
 interface DownloadItem {
   id: string;
@@ -81,6 +80,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
         encoding,
       });
       set({ downloadItem: item });
+      useAnalysisStore.getState().setPhase('idle');
       notify.downloadStarted(metadata.title);
     } catch (e) {
       logger.error('Failed to start download', { error: e });
@@ -89,7 +89,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
   },
 
   startPlaylistDownload: async () => {
-    const { entries, selectedIndices, setItemProgress, itemProgress } = usePlaylistStore.getState();
+    const { entries, selectedIndices, setItemProgress } = usePlaylistStore.getState();
     const { downloadType, selectedQuality, encoding, premiereMode, outputDir } = useOptionsStore.getState();
     const settings = useSettingsStore.getState().settings;
     const effectiveDir = outputDir || settings.default_download_folder || '';
@@ -100,19 +100,18 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
     useAnalysisStore.getState().setPhase('downloading');
     set({ isDownloading: true, downloadProgress: 0, downloadStatus: 'Queued' });
 
-    // Resolve format_id from label or use "best"
     const qual = qualityOptions.find((q) => q.label === selectedQuality) || qualityOptions.find((q) => q.value === selectedQuality);
     const format_id = qual ? qual.value : (selectedQuality && selectedQuality !== '' ? selectedQuality : 'best');
+    const concurrency = Math.max(1, settings.max_concurrent_downloads || 3);
 
     for (const idx of selectedIndices) {
-      const entry = entries[idx];
       setItemProgress(idx, { status: 'queued', progress: 0, speed: '', eta: '' });
     }
 
-    for (const idx of selectedIndices) {
+    const downloadOne = async (idx: number): Promise<void> => {
       const entry = entries[idx];
+      let cancelled = false;
       setItemProgress(idx, { status: 'downloading', progress: 0, speed: '', eta: '' });
-
       try {
         const item = await dataService.enqueueDownload({
           url: entry.url,
@@ -139,24 +138,40 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
           }
         });
         const unsubProgress = await listen<any>('download-progress', (e) => {
-          if (e.payload.id === item.id && e.payload.progress !== undefined) {
+          if (e.payload.id === item.id && e.payload.progress !== undefined && !cancelled) {
             setItemProgress(idx, { status: 'downloading', progress: e.payload.progress, speed: e.payload.speed || '', eta: e.payload.eta || '' });
           }
         });
-        await deferred.promise;
+
+        const timeout = new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error('Download timed out after 30 minutes')), 1_800_000),
+        );
+        await Promise.race([deferred.promise, timeout]);
+        cancelled = true;
         unsubItem();
         unsubProgress();
 
-        // Read final status from the queue snapshot
         const qItems = await dataService.getQueue();
         const finalItem = qItems.find((i: any) => i.id === item.id);
         const finalStatusStr = typeof finalItem?.status === 'string' ? finalItem.status : '';
-        const finalStatus = finalStatusStr === 'Completed' ? 'completed' : 'failed';
+        const finalStatus = finalStatusStr === 'Completed' ? 'completed' : finalStatusStr === 'Cancelled' ? 'cancelled' : 'failed';
         setItemProgress(idx, { status: finalStatus, progress: finalStatus === 'completed' ? 100 : 0, speed: '', eta: '' });
       } catch (e) {
-        setItemProgress(idx, { status: 'failed', progress: 0, speed: '', eta: '', error: String(e) });
+        cancelled = true;
+        const msg = String(e);
+        setItemProgress(idx, { status: msg.includes('timed out') ? 'failed' : 'failed', progress: 0, speed: '', eta: '', error: msg });
       }
-    }
+    };
+
+    const indices = [...selectedIndices];
+    let i = 0;
+    const next = (): Promise<void> => {
+      if (i >= indices.length) return Promise.resolve();
+      const idx = indices[i++];
+      return downloadOne(idx).finally(next);
+    };
+    const workers = Array.from({ length: Math.min(concurrency, indices.length) }, () => next());
+    await Promise.all(workers);
 
     set({ isDownloading: false });
     useAnalysisStore.getState().setPhase('completed');
@@ -168,14 +183,10 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
       logger.warn('cancelDownload called but no downloadItem');
       return;
     }
-    try {
-      set({ downloadStatus: 'Cancelled' });
-      await dataService.cancelDownload(item.id);
-      set({ isDownloading: false, downloadStatus: 'Cancelled' });
-    } catch (e) {
-      logger.error('Failed to cancel download', { error: e });
-      set({ isDownloading: false, downloadStatus: 'Cancelled' });
-    }
+    set({ downloadStatus: 'Cancelled', isDownloading: false });
+    dataService.cancelDownload(item.id).catch((e) =>
+      logger.error('Failed to cancel download on backend', { error: e }),
+    );
   },
 
   reset: () => set({
@@ -196,6 +207,11 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
       Object.assign(pending, update);
       if (rafId === null) {
         rafId = requestAnimationFrame(() => {
+          if (get().downloadStatus === 'Cancelled') {
+            pending = {};
+            rafId = null;
+            return;
+          }
           set(pending);
           pending = {};
           rafId = null;
@@ -206,6 +222,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
     const unlistenProgress = await listen<{ id: string; progress: number; speed: string; eta: string; status: string }>(
       'download-progress',
       (event) => {
+        if (get().downloadStatus === 'Cancelled') return;
         batch({
           downloadProgress: event.payload.progress,
           downloadSpeed: event.payload.speed,
@@ -219,6 +236,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
       const payload = event.payload;
       const statusStr = typeof payload.status === 'string' ? payload.status : Object.keys(payload.status as Record<string, string>)[0] || 'Unknown';
       const isDone = ['Completed', 'Failed', 'Cancelled'].includes(statusStr);
+      if (get().downloadStatus === 'Cancelled' && !isDone) return;
       set({
         downloadItem: payload,
         downloadProgress: payload.progress,
@@ -233,12 +251,10 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
       if (statusStr === 'Completed' && (!prev || prev.status !== 'Completed')) {
         const title = payload.title || get().downloadItem?.title || '';
         notify.downloadComplete(title, () => dataService.openInExplorer(payload.output_path));
-        toast.dismiss('download');
       } else if (statusStr === 'Failed' && (!prev || prev.status !== 'Failed')) {
         const title = payload.title || get().downloadItem?.title || '';
         const errMsg = typeof payload.status === 'object' ? Object.values(payload.status as Record<string, string>)[0] : payload.status;
         notify.downloadFailed(title, String(errMsg || 'Unknown error'), () => get().startDownload());
-        toast.dismiss('download');
       }
     });
     return () => {

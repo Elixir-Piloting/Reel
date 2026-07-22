@@ -15,6 +15,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     auto_update_ytdlp: false,
     auto_convert_premiere: false,
     show_all_formats: false,
+    max_concurrent_downloads: 3,
   },
   loaded: false,
 

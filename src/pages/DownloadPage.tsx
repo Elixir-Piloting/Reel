@@ -34,6 +34,8 @@ export function DownloadPage() {
   const selectedQuality = useOptionsStore((s) => s.selectedQuality);
   const settings = useSettingsStore((s) => s.settings);
   const isDownloading = useDownloadExecutionStore((s) => s.isDownloading);
+  const downloadItem = useDownloadExecutionStore((s) => s.downloadItem);
+  const downloadStatus = useDownloadExecutionStore((s) => s.downloadStatus);
   const startDownload = useDownloadExecutionStore((s) => s.startDownload);
   const reset = useDownloadExecutionStore((s) => s.reset);
   const itemProgress = usePlaylistStore((s) => s.itemProgress);
@@ -107,9 +109,9 @@ export function DownloadPage() {
         )}
       </AnimatedSection>
 
-      {(phase === "downloading" || phase === "completed" || phase === "error") && (
+      {!isPlaylistDownload && (isDownloading || !!downloadItem) && (
         <AnimatedSection show={true}>
-          <DownloadProgress big={phase === "downloading" || phase === "completed"} />
+          <DownloadProgress big={isDownloading || downloadStatus === "Completed"} />
         </AnimatedSection>
       )}
 
@@ -122,27 +124,31 @@ export function DownloadPage() {
         )}
       </AnimatedSection>
 
-      <AnimatedSection show={phase === "completed"}>
-        {phase === "completed" && (
-          <Button className="w-full h-11 text-base font-medium" onClick={() => { reset(); useAnalysisStore.getState().setPhase('ready'); }}>
-            <span className="flex items-center gap-2">
-              <Download className="w-4 h-4" />
-              Download More
-            </span>
-          </Button>
-        )}
-      </AnimatedSection>
+      {!isPlaylistDownload && (
+        <AnimatedSection show={phase === "completed"}>
+          {phase === "completed" && (
+            <Button className="w-full h-11 text-base font-medium" onClick={() => { reset(); useAnalysisStore.getState().setPhase('ready'); }}>
+              <span className="flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                Download More
+              </span>
+            </Button>
+          )}
+        </AnimatedSection>
+      )}
 
-      <AnimatedSection show={phase === "error"}>
-        {phase === "error" && (
-          <Button className="w-full h-11 text-base font-medium" variant="secondary" onClick={() => { reset(); useAnalysisStore.getState().setPhase('ready'); }}>
-            <span className="flex items-center gap-2">
-              <RotateCcw className="w-4 h-4" />
-              Try Again
-            </span>
-          </Button>
-        )}
-      </AnimatedSection>
+      {!isPlaylistDownload && (
+        <AnimatedSection show={phase === "error"}>
+          {phase === "error" && (
+            <Button className="w-full h-11 text-base font-medium" variant="secondary" onClick={() => { reset(); useAnalysisStore.getState().setPhase('ready'); }}>
+              <span className="flex items-center gap-2">
+                <RotateCcw className="w-4 h-4" />
+                Try Again
+              </span>
+            </Button>
+          )}
+        </AnimatedSection>
+      )}
     </div>
   );
 }

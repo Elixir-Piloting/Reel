@@ -107,6 +107,7 @@ pub struct AppSettings {
     pub auto_update_ytdlp: bool,
     pub auto_convert_premiere: bool,
     pub show_all_formats: bool,
+    pub max_concurrent_downloads: u32,
 }
 
 pub fn resolve_filename_conflict(dir: &str, base_name: &str, ext: &str) -> String {
@@ -134,6 +135,7 @@ impl Default for AppSettings {
             auto_update_ytdlp: false,
             auto_convert_premiere: false,
             show_all_formats: false,
+            max_concurrent_downloads: 3,
         }
     }
 }

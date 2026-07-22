@@ -4,9 +4,11 @@ import { useOptionsStore } from "@/stores/options-store";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
 import { usePlaylistStore } from "@/stores/playlist-store";
 import { formatDuration } from "@/lib/utils";
+import { dataService } from "@/shared/lib/data-service";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { CheckSquare, Square, Download, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { CheckSquare, Square, Download, RotateCcw, XCircle, Loader2, X } from "lucide-react";
+import { CheckCircleIcon } from "@phosphor-icons/react";
 
 export function PlaylistSelector() {
   const metadata = useAnalysisStore((s) => s.metadata);
@@ -83,11 +85,15 @@ export function PlaylistSelector() {
                 ) : (
                   <span className="w-4 shrink-0 flex items-center justify-center">
                     {status === "completed" ? (
-                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      <CheckCircleIcon size={16} className="text-green-500 shrink-0" weight="fill" />
                     ) : status === "failed" ? (
-                      <XCircle className="w-4 h-4 text-destructive" />
+                      <XCircle className="w-4 h-4 text-destructive shrink-0" />
+                    ) : status === "cancelled" ? (
+                      <XCircle className="w-4 h-4 text-destructive shrink-0" />
                     ) : status === "downloading" ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                      <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
+                    ) : status === "queued" ? (
+                      <span className="w-4 h-4 rounded-full border-2 border-muted-foreground/30" />
                     ) : (
                       <span className="w-4 h-4 rounded-full border border-muted-foreground/30" />
                     )}
@@ -116,13 +122,14 @@ export function PlaylistSelector() {
                     <span className="text-xs text-muted-foreground mr-1.5">#{idx + 1}</span>
                     {entry.title}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {entry.duration > 0 ? formatDuration(entry.duration) : ""}
+                  <p className="text-xs">
+                    {entry.duration > 0 ? <span className="text-muted-foreground">{formatDuration(entry.duration)}</span> : ""}
                     {isDownloaded && status && status !== "queued" && (
                       <span className="ml-2">
-                        {status === "downloading" && progressItem ? `${Math.round(progressItem.progress)}%` : ""}
-                        {status === "completed" ? "Downloaded" : ""}
-                        {status === "failed" ? "Failed" : ""}
+                        {status === "downloading" && progressItem ? <span className="text-muted-foreground">{Math.round(progressItem.progress)}%</span> : ""}
+                        {status === "completed" ? <span className="text-green-600 dark:text-green-400">Downloaded</span> : ""}
+                        {status === "failed" ? <span className="text-destructive">Failed</span> : ""}
+                        {status === "cancelled" ? <span className="text-destructive">Cancelled</span> : ""}
                       </span>
                     )}
                   </p>
@@ -132,6 +139,17 @@ export function PlaylistSelector() {
                     </div>
                   )}
                 </div>
+                {isDownloaded && status === "downloading" && (
+                  <div className="shrink-0">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); dataService.cancelDownload(entry.id); }}
+                      className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-7 w-7 text-muted-foreground transition-colors"
+                      title="Cancel"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -226,6 +244,19 @@ export function PlaylistSelector() {
             )}
           </Button>
         </>
+      )}
+
+      {phase === "completed" && isDownloading === false && (
+        <Button
+          className="w-full h-11 text-base font-medium"
+          variant="secondary"
+          onClick={() => useAnalysisStore.getState().setPhase('playlist')}
+        >
+          <span className="flex items-center gap-2">
+            <RotateCcw className="w-4 h-4" />
+            Download More
+          </span>
+        </Button>
       )}
     </div>
   );

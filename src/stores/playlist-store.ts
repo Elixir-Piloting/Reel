@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface PlaylistItemProgress {
-  status: 'queued' | 'downloading' | 'completed' | 'failed';
+  status: 'queued' | 'downloading' | 'completed' | 'failed' | 'cancelled';
   progress: number;
   speed: string;
   eta: string;

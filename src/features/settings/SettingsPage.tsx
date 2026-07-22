@@ -49,6 +49,25 @@ export function SettingsPage() {
         </div>
       </SettingsCard>
 
+      <SettingsCard title="Playlist">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">Max concurrent downloads</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => updateSettings({ max_concurrent_downloads: Math.max(1, settings.max_concurrent_downloads - 1) })}
+                className="w-7 h-7 rounded-md border border-input flex items-center justify-center text-sm hover:bg-accent transition-colors"
+              >−</button>
+              <span className="w-8 text-center text-sm tabular-nums">{settings.max_concurrent_downloads}</span>
+              <button
+                onClick={() => updateSettings({ max_concurrent_downloads: Math.min(10, settings.max_concurrent_downloads + 1) })}
+                className="w-7 h-7 rounded-md border border-input flex items-center justify-center text-sm hover:bg-accent transition-colors"
+              >+</button>
+            </div>
+          </div>
+        </div>
+      </SettingsCard>
+
       <SettingsCard title="Output">
         <div className="space-y-2">
           <Label>Filename pattern</Label>

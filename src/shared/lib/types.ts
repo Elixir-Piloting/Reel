@@ -71,6 +71,7 @@ export interface AppSettings {
   auto_update_ytdlp: boolean;
   auto_convert_premiere: boolean;
   show_all_formats: boolean;
+  max_concurrent_downloads: number;
 }
 
 export interface QualityOption {
