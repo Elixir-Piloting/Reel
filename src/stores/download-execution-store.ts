@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { dataService } from '../shared/lib/data-service';
 import { logger } from '../shared/lib/logger';
@@ -39,7 +40,9 @@ interface DownloadExecutionState {
   initProgressListener: () => Promise<() => void>;
 }
 
-export const useDownloadExecutionStore = create<DownloadExecutionState>((set, get) => ({
+export const useDownloadExecutionStore = create<DownloadExecutionState>()(
+  persist(
+    (set, get) => ({
   isDownloading: false,
   downloadProgress: 0,
   downloadSpeed: '',
@@ -71,6 +74,8 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>((set, ge
         premiere_mode: premiereMode,
         download_type: downloadType === 'video' ? 'Video' : 'Audio',
         video_title: metadata.title,
+        channel: metadata.channel,
+        duration: metadata.duration,
         thumbnail_url: metadata.thumbnail_url,
         has_audio: downloadType === 'video',
         encoding,
@@ -119,6 +124,8 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>((set, ge
           premiere_mode: premiereMode,
           download_type: downloadType === 'video' ? 'Video' : 'Audio',
           video_title: entry.title,
+          channel: '',
+          duration: entry.duration || 0,
           thumbnail_url: entry.thumbnail,
           has_audio: downloadType === 'video',
           encoding,
@@ -157,12 +164,17 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>((set, ge
 
   cancelDownload: async () => {
     const item = get().downloadItem;
-    if (!item) return;
+    if (!item) {
+      logger.warn('cancelDownload called but no downloadItem');
+      return;
+    }
     try {
+      set({ downloadStatus: 'Cancelled' });
       await dataService.cancelDownload(item.id);
-      set({ isDownloading: false });
+      set({ isDownloading: false, downloadStatus: 'Cancelled' });
     } catch (e) {
       logger.error('Failed to cancel download', { error: e });
+      set({ isDownloading: false, downloadStatus: 'Cancelled' });
     }
   },
 
@@ -234,5 +246,18 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>((set, ge
       unlistenProgress();
       unlistenItem();
     };
-  },
-}));
+  }}),
+  {
+    name: 'download-execution',
+    storage: createJSONStorage(() => sessionStorage),
+    partialize: (state) => ({
+      isDownloading: state.isDownloading,
+      downloadProgress: state.downloadProgress,
+      downloadSpeed: state.downloadSpeed,
+      downloadEta: state.downloadEta,
+      downloadStatus: state.downloadStatus,
+      downloadItem: state.downloadItem,
+      completedFileName: state.completedFileName,
+    }),
+  }),
+);

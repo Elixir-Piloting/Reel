@@ -40,6 +40,8 @@ export interface DownloadRequest {
   premiere_mode: boolean;
   download_type: "Video" | "Audio";
   video_title: string;
+  channel: string;
+  duration: number;
   thumbnail_url: string;
   has_audio: boolean;
   encoding: string;
@@ -55,6 +57,8 @@ export interface DownloadItem {
   speed: string;
   eta: string;
   status: string | Record<string, string>;
+  channel: string;
+  duration: number;
   thumbnail_url: string;
   ext: string;
   format_id: string;

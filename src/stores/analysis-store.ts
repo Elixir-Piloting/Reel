@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { VideoMeta, FormatInfo, AnalyzeResponse } from '../shared/lib/types';
 import { dataService } from '../shared/lib/data-service';
 import { logger } from '../shared/lib/logger';
@@ -27,7 +28,9 @@ interface AnalysisState {
 
 let analyzeGen = 0;
 
-export const useAnalysisStore = create<AnalysisState>((set, get) => ({
+export const useAnalysisStore = create<AnalysisState>()(
+  persist(
+    (set, get) => ({
   url: '',
   metadata: null,
   playlistTitle: null,
@@ -118,5 +121,18 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     if (!current && arr.length > 0) {
       useOptionsStore.getState().setSelectedQuality(arr[0].label);
     }
-  },
-}));
+  }}),
+  {
+    name: 'analysis-store',
+    storage: createJSONStorage(() => sessionStorage),
+    partialize: (state) => ({
+      url: state.url,
+      metadata: state.metadata,
+      playlistTitle: state.playlistTitle,
+      formats: state.formats,
+      qualityOptions: state.qualityOptions,
+      error: state.error,
+      phase: state.phase,
+    }),
+  }),
+);

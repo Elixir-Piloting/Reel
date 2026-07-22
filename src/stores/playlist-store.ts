@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 export interface PlaylistItemProgress {
   status: 'queued' | 'downloading' | 'completed' | 'failed';
@@ -36,7 +37,9 @@ const initialState = {
   itemProgress: {},
 };
 
-export const usePlaylistStore = create<PlaylistState>((set, get) => ({
+export const usePlaylistStore = create<PlaylistState>()(
+  persist(
+    (set, get) => ({
   ...initialState,
 
   setEntries: (entries) => set({ entries, selectedIndices: entries.map((_, i) => i) }),
@@ -65,4 +68,15 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
     })),
 
   resetPlaylist: () => set(initialState),
-}));
+}),
+{
+  name: 'playlist-store',
+  storage: createJSONStorage(() => sessionStorage),
+  partialize: (state) => ({
+    entries: state.entries,
+    selectedIndices: state.selectedIndices,
+    selectAll: state.selectAll,
+    itemProgress: state.itemProgress,
+  }),
+},
+));

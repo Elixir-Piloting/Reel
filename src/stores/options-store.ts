@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 type DownloadType = 'video' | 'audio';
 
@@ -34,7 +35,9 @@ const initialState = {
   outputDir: '',
 };
 
-export const useOptionsStore = create<OptionsState>((set) => ({
+export const useOptionsStore = create<OptionsState>()(
+  persist(
+    (set) => ({
   ...initialState,
 
   setDownloadType: (downloadType) => set({ downloadType }),
@@ -46,4 +49,19 @@ export const useOptionsStore = create<OptionsState>((set) => ({
   setFilename: (filename) => set({ filename }),
   setOutputDir: (outputDir) => set({ outputDir }),
   resetOptions: () => set(initialState),
-}));
+}),
+{
+  name: 'options-store',
+  storage: createJSONStorage(() => sessionStorage),
+  partialize: (state) => ({
+    downloadType: state.downloadType,
+    selectedQuality: state.selectedQuality,
+    startTime: state.startTime,
+    endTime: state.endTime,
+    encoding: state.encoding,
+    premiereMode: state.premiereMode,
+    filename: state.filename,
+    outputDir: state.outputDir,
+  }),
+},
+));

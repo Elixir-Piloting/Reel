@@ -12,6 +12,7 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/geist": "^5.2.9",
+    "@phosphor-icons/react": "^2.1.10",
     "@radix-ui/react-label": "^2.1.11",
     "@radix-ui/react-progress": "^1.1.12",
     "@radix-ui/react-select": "^2.3.3",

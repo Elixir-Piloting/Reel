@@ -8,9 +8,10 @@ import { VideoInfo } from "@/features/video-info";
 import { DownloadTypeSelector, QualitySelector, RangeSelector, EncodingSelector, DestinationSelector } from "@/features/download-options";
 import { DownloadProgress } from "@/features/download-execution";
 import { PlaylistSelector } from "@/features/playlist";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { SettingsCard } from "@/components/ui/settings-card";
 import { Download, RotateCcw } from "lucide-react";
+import { formatDuration, formatDate } from "@/lib/utils";
 
 function AnimatedSection({ show, children }: { show: boolean; children: React.ReactNode }) {
   return (
@@ -37,6 +38,7 @@ export function DownloadPage() {
   const reset = useDownloadExecutionStore((s) => s.reset);
   const itemProgress = usePlaylistStore((s) => s.itemProgress);
 
+  const [imgLoaded, setImgLoaded] = useState(false);
   const isPlaylistDownload = Object.keys(itemProgress).length > 0;
   const effectiveDir = outputDir || settings.default_download_folder || '';
   const canDownload = phase === "ready" && !!effectiveDir && !!selectedQuality && !isDownloading;
@@ -45,29 +47,38 @@ export function DownloadPage() {
     <div className="max-w-2xl mx-auto space-y-5 py-4">
       <UrlInput />
 
-      <AnimatedSection show={phase === "analyzing" || phase === "ready"}>
-        {(phase === "analyzing" || phase === "ready") && <VideoInfo />}
+      <AnimatedSection show={phase === "analyzing"}>
+        {phase === "analyzing" && <VideoInfo />}
       </AnimatedSection>
 
       <AnimatedSection show={phase === "ready"}>
         {phase === "ready" && (
-          <>
-            <SettingsCard title="Download Type">
-              <DownloadTypeSelector />
-            </SettingsCard>
-            <SettingsCard title="Quality">
-              <QualitySelector />
-            </SettingsCard>
-            <SettingsCard title="Duration Range">
-              <RangeSelector />
-            </SettingsCard>
-            <SettingsCard title="Encoding">
-              <EncodingSelector />
-            </SettingsCard>
-            <SettingsCard title="Destination">
-              <DestinationSelector />
-            </SettingsCard>
-          </>
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted">
+                  {metadata?.thumbnail_url && (
+                    <img src={metadata.thumbnail_url} alt={metadata?.title} className={`w-full h-full object-cover transition-opacity ${imgLoaded ? "opacity-100" : "opacity-0"}`} onLoad={() => setImgLoaded(true)} />
+                  )}
+                </div>
+                <div className="space-y-1">
+                  <h2 className="font-semibold text-base leading-tight line-clamp-2">{metadata?.title}</h2>
+                  <p className="text-sm text-muted-foreground">{metadata?.channel}</p>
+                  <div className="flex gap-3 text-xs text-muted-foreground">
+                    <span>{formatDuration(metadata?.duration || 0)}</span>
+                    <span>{formatDate(metadata?.upload_date || '')}</span>
+                  </div>
+                </div>
+                <RangeSelector />
+              </div>
+              <div className="space-y-4">
+                <DownloadTypeSelector />
+                <QualitySelector />
+                <EncodingSelector />
+              </div>
+            </div>
+            <DestinationSelector />
+          </div>
         )}
       </AnimatedSection>
 
@@ -109,7 +120,7 @@ export function DownloadPage() {
 
       <AnimatedSection show={phase === "completed"}>
         {phase === "completed" && (
-          <Button className="w-full h-11 text-base font-medium" onClick={reset}>
+          <Button className="w-full h-11 text-base font-medium" onClick={() => { reset(); useAnalysisStore.getState().setPhase('ready'); }}>
             <span className="flex items-center gap-2">
               <Download className="w-4 h-4" />
               Download More
@@ -120,7 +131,7 @@ export function DownloadPage() {
 
       <AnimatedSection show={phase === "error"}>
         {phase === "error" && (
-          <Button className="w-full h-11 text-base font-medium" variant="secondary" onClick={reset}>
+          <Button className="w-full h-11 text-base font-medium" variant="secondary" onClick={() => { reset(); useAnalysisStore.getState().setPhase('ready'); }}>
             <span className="flex items-center gap-2">
               <RotateCcw className="w-4 h-4" />
               Try Again

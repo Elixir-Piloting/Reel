@@ -137,6 +137,8 @@ pub async fn enqueue_download(
         speed: String::new(),
         eta: String::new(),
         status: DownloadStatus::Queued,
+        channel: request.channel.clone(),
+        duration: request.duration,
         thumbnail_url: request.thumbnail_url.clone(),
         ext: ext.to_string(),
         format_id: request.format_id.clone(),

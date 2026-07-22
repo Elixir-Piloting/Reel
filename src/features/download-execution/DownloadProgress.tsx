@@ -1,27 +1,29 @@
-import { Progress } from "@/components/ui/progress";
-import { X, FolderOpen, RotateCcw, ImageIcon, CheckCircle2, AlertCircle } from "lucide-react";
+import { X, FolderOpen } from "lucide-react";
+import { CheckCircleIcon } from "@phosphor-icons/react";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
 import { dataService } from "@/shared/lib/data-service";
 
-const statusColors: Record<string, string> = {
-  Queued: "text-muted-foreground",
-  Downloading: "text-blue-500",
-  Merging: "text-amber-500",
-  Converting: "text-amber-500",
-  Completed: "text-green-500",
-  Failed: "text-destructive",
-  Cancelled: "text-muted-foreground",
-};
+function PieProgress({ percent, size = 28 }: { percent: number; size?: number }) {
+  const r = size * 0.4;
+  const circumference = 2 * Math.PI * r;
+  const offset = circumference - (Math.min(percent, 100) / 100) * circumference;
+  const center = size / 2;
 
-const statusLabels: Record<string, string> = {
-  Queued: "Queued",
-  Downloading: "Downloading",
-  Merging: "Merging...",
-  Converting: "Converting...",
-  Completed: "Completed",
-  Failed: "Failed",
-  Cancelled: "Cancelled",
-};
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0 text-primary">
+      <circle cx={center} cy={center} r={r} fill="none" stroke="currentColor" strokeWidth={size * 0.1} opacity="0.15" />
+      <circle
+        cx={center} cy={center} r={r}
+        fill="none" stroke="currentColor" strokeWidth={size * 0.1}
+        strokeDasharray={circumference}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        transform={`rotate(-90 ${center} ${center})`}
+        className="text-primary"
+      />
+    </svg>
+  );
+}
 
 interface Props {
   big?: boolean;
@@ -30,106 +32,81 @@ interface Props {
 export function DownloadProgress({ big }: Props) {
   const downloadItem = useDownloadExecutionStore((s) => s.downloadItem);
   const downloadProgress = useDownloadExecutionStore((s) => s.downloadProgress);
-  const downloadSpeed = useDownloadExecutionStore((s) => s.downloadSpeed);
-  const downloadEta = useDownloadExecutionStore((s) => s.downloadEta);
   const downloadStatus = useDownloadExecutionStore((s) => s.downloadStatus);
   const isDownloading = useDownloadExecutionStore((s) => s.isDownloading);
   const cancelDownload = useDownloadExecutionStore((s) => s.cancelDownload);
-  const startDownload = useDownloadExecutionStore((s) => s.startDownload);
   const completedFileName = useDownloadExecutionStore((s) => s.completedFileName);
 
   if (!downloadItem && !isDownloading) return null;
   if (!downloadItem) {
-    if (isDownloading) {
-      return (
-        <div className={`rounded-lg border bg-card ${big ? "p-8" : "p-4"} space-y-3`}>
-          <div className="flex items-center gap-4">
-            <div className="shrink-0 w-16 h-10 bg-muted rounded overflow-hidden flex items-center justify-center">
-              <ImageIcon className="w-4 h-4 text-muted-foreground" />
-            </div>
-            <div className="flex-1 min-w-0 space-y-1">
-              <p className={`font-medium truncate ${big ? "text-lg" : "text-sm"}`}>Starting download...</p>
-              <Progress value={0} className="h-2" />
-            </div>
-          </div>
+    return (
+      <div className={`rounded-lg border bg-card ${big ? "p-6" : "p-4"}`}>
+        <div className="flex items-center gap-3">
+          <PieProgress percent={0} size={28} />
+          <span className="text-sm text-muted-foreground">Starting download...</span>
         </div>
-      );
-    }
-    return null;
+      </div>
+    );
   }
 
   const st = downloadStatus;
   const active = ["Queued", "Downloading", "Merging", "Converting"].includes(st);
-  const finished = ["Completed", "Failed", "Cancelled"].includes(st);
+  const completed = st === "Completed";
+
+  const thumb = (downloadItem as unknown as Record<string, unknown>).thumbnail_url as string | undefined;
 
   return (
     <div className={`rounded-lg border bg-card overflow-hidden ${big ? "ring-1 ring-primary/20" : ""}`}>
-      <div className="flex items-stretch gap-0">
-        <div className={`shrink-0 bg-muted flex items-center justify-center overflow-hidden aspect-video ${big ? "w-32" : "w-20"}`}>
-          {(downloadItem as unknown as Record<string, unknown>).thumbnail_url ? (
-            <img
-              src={(downloadItem as unknown as Record<string, unknown>).thumbnail_url as string}
-              alt=""
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <ImageIcon className={`text-muted-foreground ${big ? "w-8 h-8" : "w-5 h-5"}`} />
-          )}
-        </div>
-        <div className="flex-1 min-w-0 p-4 flex flex-col justify-center gap-1">
-          <div className="flex justify-between items-start gap-2">
-            <p className={`font-medium truncate ${big ? "text-base" : "text-sm"}`}>{downloadItem.title || downloadItem.filename}</p>
-            <span className={`shrink-0 flex items-center gap-1 ${statusColors[st] || ""} ${big ? "text-sm" : "text-xs"}`}>
-              {st === "Completed" && <CheckCircle2 className="w-4 h-4" />}
-              {st === "Failed" && <AlertCircle className="w-4 h-4" />}
-              {statusLabels[st] || st}
-            </span>
+      <div className="flex items-stretch gap-3 p-4">
+        {thumb ? (
+          <div className="w-24 shrink-0 rounded overflow-hidden bg-muted self-stretch">
+            <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
           </div>
-          <p className={`text-muted-foreground truncate ${big ? "text-sm" : "text-xs"}`}>{completedFileName || downloadItem.filename}</p>
-          {st === "Failed" && (
-            <p className="text-xs text-destructive truncate">
-              {typeof downloadItem.status === "object" ? Object.values(downloadItem.status as object)[0] : ""}
-            </p>
-          )}
-          {active && (
-            <div className={`space-y-1 ${big ? "mt-3" : "mt-1"}`}>
-              <Progress value={downloadProgress} className={big ? "h-3" : "h-2"} />
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{downloadProgress.toFixed(1)}%</span>
-                <span>{downloadSpeed}</span>
-                <span>{downloadEta}</span>
-              </div>
-            </div>
-          )}
-          {st === "Completed" && <Progress value={100} className={`${big ? "h-3 mt-3" : "h-2 mt-1"}`} />}
+        ) : (
+          <div className="w-24 shrink-0" />
+        )}
+        <div className="flex-1 min-w-0 space-y-0.5 self-center">
+          <p className={`font-medium line-clamp-2 leading-tight ${big ? "text-base" : "text-sm"}`}>{downloadItem.title || downloadItem.filename}</p>
+          <p className="text-xs text-muted-foreground truncate">{completedFileName || downloadItem.filename}</p>
+          <div className="flex items-center gap-1.5 mt-1.5">
+            {active && (
+              <>
+                <PieProgress percent={downloadProgress} size={20} />
+                <span className="text-xs text-muted-foreground">downloading {downloadProgress.toFixed(0)}%</span>
+                {st !== "Downloading" && (
+                  <span className="text-xs text-muted-foreground capitalize">({st.toLowerCase()})</span>
+                )}
+              </>
+            )}
+            {completed && (
+              <>
+                <CheckCircleIcon size={20} className="text-green-500 shrink-0" weight="fill" />
+                <span className="text-xs text-muted-foreground">downloaded</span>
+                <button
+                  onClick={() => dataService.openInExplorer(downloadItem.output_path)}
+                  className="text-xs text-blue-500 hover:underline inline-flex items-center gap-1 ml-2"
+                >
+                  <FolderOpen className="w-3 h-3" />
+                  reveal in explorer
+                </button>
+              </>
+            )}
+            {st === "Failed" && (
+              <span className="text-xs text-destructive">Failed</span>
+            )}
+            {st === "Cancelled" && (
+              <span className="text-xs text-muted-foreground">Cancelled</span>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col justify-center gap-1 pr-3">
+        <div className="shrink-0">
           {active && (
             <button
               onClick={cancelDownload}
-              className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8"
+              className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8 text-muted-foreground"
               title="Cancel"
             >
               <X className="h-4 w-4" />
-            </button>
-          )}
-          {st === "Failed" && (
-            <button
-              onClick={startDownload}
-              className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8"
-              title="Retry"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </button>
-          )}
-          {st === "Completed" && downloadItem.output_path && (
-            <button
-              onClick={() => dataService.openInExplorer(downloadItem.output_path)}
-              className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8"
-              title="Open in Explorer"
-            >
-              <FolderOpen className="h-4 w-4" />
             </button>
           )}
         </div>
