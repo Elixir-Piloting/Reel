@@ -1,17 +1,46 @@
+import { Sun, Moon, Monitor } from "lucide-react";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useThemeStore, type Theme } from "@/stores/theme-store";
 import { SettingsCard } from "@/components/ui/settings-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const themeOptions: { value: Theme; label: string; icon: React.ReactNode }[] = [
+  { value: "light", label: "Light", icon: <Sun className="size-4" /> },
+  { value: "dark", label: "Dark", icon: <Moon className="size-4" /> },
+  { value: "system", label: "System", icon: <Monitor className="size-4" /> },
+];
+
 export function SettingsPage() {
   const { settings, updateSettings, loaded } = useSettingsStore();
+  const theme = useThemeStore((s) => s.theme);
+  const setTheme = useThemeStore((s) => s.setTheme);
 
   if (!loaded) return null;
 
   return (
-    <div className="space-y-6 max-w-2xl mx-auto py-4">
+    <div className="space-y-6 w-full">
       <h1 className="text-2xl font-semibold">Settings</h1>
+
+      <SettingsCard title="Appearance">
+        <div className="flex gap-2">
+          {themeOptions.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setTheme(opt.value)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                theme === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+              }`}
+            >
+              {opt.icon}
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </SettingsCard>
 
       <SettingsCard title="Download Folder">
         <div className="flex gap-2">
@@ -34,18 +63,9 @@ export function SettingsPage() {
 
       <SettingsCard title="Download Defaults">
         <div className="space-y-3">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={settings.auto_update_ytdlp} onChange={(e) => updateSettings({ auto_update_ytdlp: e.target.checked })} className="accent-primary" />
-            <span className="text-sm">Auto-update yt-dlp on launch</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={settings.auto_convert_premiere} onChange={(e) => updateSettings({ auto_convert_premiere: e.target.checked })} className="accent-primary" />
-            <span className="text-sm">Auto-convert to Premiere-compatible</span>
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={settings.show_all_formats} onChange={(e) => updateSettings({ show_all_formats: e.target.checked })} className="accent-primary" />
-            <span className="text-sm">Show all formats (not just best per quality)</span>
-          </label>
+          <ToggleSetting checked={settings.auto_update_ytdlp} onChange={(v) => updateSettings({ auto_update_ytdlp: v })} label="Auto-update yt-dlp on launch" />
+          <ToggleSetting checked={settings.auto_convert_premiere} onChange={(v) => updateSettings({ auto_convert_premiere: v })} label="Auto-convert to Premiere-compatible" />
+          <ToggleSetting checked={settings.show_all_formats} onChange={(v) => updateSettings({ show_all_formats: v })} label="Show all formats (not just best per quality)" />
         </div>
       </SettingsCard>
 
@@ -76,5 +96,27 @@ export function SettingsPage() {
         </div>
       </SettingsCard>
     </div>
+  );
+}
+
+function ToggleSetting({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <label className="flex items-center gap-3 cursor-pointer group">
+      <button
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+          checked ? "bg-primary" : "bg-input"
+        }`}
+      >
+        <span
+          className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-sm ring-0 transition-transform ${
+            checked ? "translate-x-4" : "translate-x-0"
+          }`}
+        />
+      </button>
+      <span className="text-sm group-hover:text-foreground transition-colors">{label}</span>
+    </label>
   );
 }
