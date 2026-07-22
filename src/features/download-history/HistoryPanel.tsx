@@ -109,17 +109,17 @@ export function HistoryPanel({ onClose }: HistoryPanelProps) {
             const active = ['Queued', 'Downloading', 'Merging', 'Converting'].includes(st);
             const completed = st === 'Completed';
             return (
-              <div key={item.id} className="flex items-stretch gap-3 p-3 rounded-lg bg-elevated shadow-card">
+              <div key={item.id} className="flex items-start gap-3 p-3 rounded-lg bg-elevated shadow-card">
                 {item.thumbnail_url ? (
-                  <div className="w-20 shrink-0 rounded overflow-hidden bg-muted self-stretch">
+                  <div className="w-32 shrink-0 rounded overflow-hidden bg-muted aspect-video">
                     <img src={item.thumbnail_url} alt="" className="w-full h-full object-cover" loading="lazy" />
                   </div>
                 ) : (
-                  <div className="w-20 shrink-0 rounded bg-muted flex items-center justify-center self-stretch">
+                  <div className="w-32 shrink-0 rounded bg-muted flex items-center justify-center aspect-video">
                     <ImageIcon className="w-4 h-4 text-muted-foreground" />
                   </div>
                 )}
-                <div className="flex-1 min-w-0 space-y-0.5 self-center">
+                <div className="flex-1 min-w-0 space-y-0.5">
                   <p className="text-sm font-medium line-clamp-2 leading-tight">{item.title}</p>
                   <p className="text-xs text-muted-foreground truncate">{item.filename}</p>
                   <div className="flex items-center gap-1.5 mt-1">

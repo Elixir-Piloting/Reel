@@ -40,11 +40,9 @@ export function DownloadProgress({ big }: Props) {
   if (!downloadItem && !isDownloading) return null;
   if (!downloadItem) {
     return (
-      <div className={`rounded-lg border bg-card ${big ? "p-6" : "p-4"}`}>
-        <div className="flex items-center gap-3">
-          <PieProgress percent={0} size={28} />
-          <span className="text-sm text-muted-foreground">Starting download...</span>
-        </div>
+      <div className="flex items-center gap-3">
+        <PieProgress percent={0} size={28} />
+        <span className="text-sm text-muted-foreground">Starting download...</span>
       </div>
     );
   }
@@ -56,16 +54,15 @@ export function DownloadProgress({ big }: Props) {
   const thumb = (downloadItem as unknown as Record<string, unknown>).thumbnail_url as string | undefined;
 
   return (
-    <div className={`rounded-lg border bg-card overflow-hidden ${big ? "ring-1 ring-primary/20" : ""}`}>
-      <div className="flex items-stretch gap-3 p-4">
-        {thumb ? (
-          <div className="w-24 shrink-0 rounded overflow-hidden bg-muted self-stretch">
-            <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
-          </div>
-        ) : (
-          <div className="w-24 shrink-0" />
-        )}
-        <div className="flex-1 min-w-0 space-y-0.5 self-center">
+    <div className="flex items-start gap-3">
+      {thumb ? (
+        <div className="w-2/5 shrink-0 rounded overflow-hidden bg-muted aspect-video">
+          <img src={thumb} alt="" className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      ) : (
+        <div className="w-2/5 shrink-0" />
+      )}
+      <div className="flex-1 min-w-0 space-y-0.5">
           <p className={`font-medium line-clamp-2 leading-tight ${big ? "text-base" : "text-sm"}`}>{downloadItem.title || downloadItem.filename}</p>
           <p className="text-xs text-muted-foreground truncate">{completedFileName || downloadItem.filename}</p>
           <div className="flex items-center gap-1.5 mt-1.5">
@@ -111,6 +108,5 @@ export function DownloadProgress({ big }: Props) {
           )}
         </div>
       </div>
-    </div>
-  );
+    );
 }
