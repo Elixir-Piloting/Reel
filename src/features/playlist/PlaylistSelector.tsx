@@ -1,5 +1,4 @@
-import { useRef } from "react";
-import { useVirtualizer } from '@tanstack/react-virtual';
+
 import { useAnalysisStore } from "@/stores/analysis-store";
 import { useOptionsStore } from "@/stores/options-store";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
@@ -28,12 +27,6 @@ export function PlaylistSelector() {
   const itemProgress = usePlaylistStore((s) => s.itemProgress);
 
   const count = selectedIndices.length;
-  const parentRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
-    count: entries.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 60,
-  });
 
   if (entries.length === 0) return null;
 
@@ -56,103 +49,92 @@ export function PlaylistSelector() {
           )}
         </div>
 
-        <div ref={parentRef} className="h-80 overflow-y-auto">
-          <div style={{ height: `${virtualizer.getTotalSize()}px`, position: 'relative' }}>
-            {virtualizer.getVirtualItems().map((virtualItem) => {
-              const idx = virtualItem.index;
-              const entry = entries[idx];
-              const progressItem = itemProgress[idx];
-              const isDownloaded = phase === "downloading" || phase === "completed";
-              const status = progressItem?.status;
+        <div className="h-80 overflow-y-auto flex flex-col gap-1.5">
+          {entries.map((entry, idx) => {
+            const progressItem = itemProgress[idx];
+            const isDownloaded = phase === "downloading" || phase === "completed";
+            const status = progressItem?.status;
 
-              return (
-                <div
-                  key={idx}
-                  onClick={() => phase === "playlist" && toggleEntry(idx)}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualItem.start}px)`,
-                  }}
-                  className={`flex items-center gap-3 px-2 py-1.5 rounded-md transition-colors ${
-                    phase === "playlist" ? "hover:bg-accent/50 cursor-pointer" : ""
-                  } ${status === "completed" ? "opacity-60" : ""} ${status === "failed" ? "bg-destructive/5" : ""}`}
-                >
-                  {phase === "playlist" ? (
-                    <button
-                      role="checkbox"
-                      aria-checked={selectedIndices.includes(idx)}
-                      onClick={() => toggleEntry(idx)}
-                      className={`w-4 h-4 rounded shrink-0 border flex items-center justify-center transition-colors ${
-                        selectedIndices.includes(idx)
-                          ? "bg-primary border-primary"
-                          : "border-muted-foreground/30 hover:border-muted-foreground/60"
-                      }`}
-                    >
-                      {selectedIndices.includes(idx) && (
-                        <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 text-primary-foreground">
-                          <path d="M13 4L6.5 12L3 8.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </button>
-                  ) : (
-                    <span className="w-4 shrink-0 flex items-center justify-center">
-                      {status === "completed" ? (
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      ) : status === "failed" ? (
-                        <XCircle className="w-4 h-4 text-destructive" />
-                      ) : status === "downloading" ? (
-                        <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                      ) : (
-                        <span className="w-4 h-4 rounded-full border border-muted-foreground/30" />
-                      )}
-                    </span>
-                  )}
-
-                  <div className="relative w-20 shrink-0 aspect-video rounded overflow-hidden bg-muted">
-                    {entry.thumbnail ? (
-                      <img
-                        src={entry.thumbnail}
-                        alt=""
-                        className="absolute inset-0 w-full h-full object-cover"
-                        loading="lazy"
-                      />
+            return (
+              <div
+                key={idx}
+                onClick={() => phase === "playlist" && toggleEntry(idx)}
+                className={`flex items-center gap-3 px-2 py-1.5 rounded-md transition-colors ${
+                  phase === "playlist" ? "hover:bg-accent/50 cursor-pointer" : ""
+                } ${status === "completed" ? "opacity-60" : ""} ${status === "failed" ? "bg-destructive/5" : ""}`}
+              >
+                {phase === "playlist" ? (
+                  <button
+                    role="checkbox"
+                    aria-checked={selectedIndices.includes(idx)}
+                    onClick={() => toggleEntry(idx)}
+                    className={`w-4 h-4 rounded shrink-0 border flex items-center justify-center transition-colors ${
+                      selectedIndices.includes(idx)
+                        ? "bg-primary border-primary"
+                        : "border-muted-foreground/30 hover:border-muted-foreground/60"
+                    }`}
+                  >
+                    {selectedIndices.includes(idx) && (
+                      <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 text-primary-foreground">
+                        <path d="M13 4L6.5 12L3 8.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </button>
+                ) : (
+                  <span className="w-4 shrink-0 flex items-center justify-center">
+                    {status === "completed" ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                    ) : status === "failed" ? (
+                      <XCircle className="w-4 h-4 text-destructive" />
+                    ) : status === "downloading" ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
                     ) : (
-                      <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                      </div>
+                      <span className="w-4 h-4 rounded-full border border-muted-foreground/30" />
                     )}
-                  </div>
+                  </span>
+                )}
 
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm truncate">
-                      <span className="text-xs text-muted-foreground mr-1.5">#{idx + 1}</span>
-                      {entry.title}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {entry.duration > 0 ? formatDuration(entry.duration) : ""}
-                      {isDownloaded && status && status !== "queued" && (
-                        <span className="ml-2">
-                          {status === "downloading" && progressItem ? `${Math.round(progressItem.progress)}%` : ""}
-                          {status === "completed" ? "Downloaded" : ""}
-                          {status === "failed" ? "Failed" : ""}
-                        </span>
-                      )}
-                    </p>
-                    {isDownloaded && status === "downloading" && progressItem && progressItem.progress > 0 && (
-                      <div className="w-full h-1 bg-muted rounded-full mt-1 overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progressItem.progress}%` }} />
-                      </div>
-                    )}
-                  </div>
+                <div className="w-28 shrink-0 aspect-video rounded overflow-hidden bg-muted">
+                  {entry.thumbnail ? (
+                    <img
+                      src={entry.thumbnail}
+                      alt=""
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
-              );
-            })}
-          </div>
+
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm truncate">
+                    <span className="text-xs text-muted-foreground mr-1.5">#{idx + 1}</span>
+                    {entry.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {entry.duration > 0 ? formatDuration(entry.duration) : ""}
+                    {isDownloaded && status && status !== "queued" && (
+                      <span className="ml-2">
+                        {status === "downloading" && progressItem ? `${Math.round(progressItem.progress)}%` : ""}
+                        {status === "completed" ? "Downloaded" : ""}
+                        {status === "failed" ? "Failed" : ""}
+                      </span>
+                    )}
+                  </p>
+                  {isDownloaded && status === "downloading" && progressItem && progressItem.progress > 0 && (
+                    <div className="w-full h-1 bg-muted rounded-full mt-1 overflow-hidden">
+                      <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progressItem.progress}%` }} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -160,31 +142,61 @@ export function PlaylistSelector() {
         <>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-sm text-muted-foreground">Download Type</label>
-              <Select value={downloadType} onValueChange={(v) => v && setDownloadType(v as "video" | "audio")}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="video">Video + Audio</SelectItem>
-                  <SelectItem value="audio">Audio Only</SelectItem>
-                </SelectContent>
-              </Select>
+              <p className="text-sm text-muted-foreground">Download Type</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => { setDownloadType("video"); useOptionsStore.getState().setEncoding("mp4_h264"); useAnalysisStore.getState().rebuildQualityOptions(); }}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
+                    downloadType === "video"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:border-muted-foreground/40 hover:bg-accent/30"
+                  }`}
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="23 7 16 12 23 17 23 7" />
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                  </svg>
+                  <span className="text-xs font-medium">Video</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight">+ Audio</span>
+                </button>
+                <button
+                  onClick={() => { setDownloadType("audio"); useOptionsStore.getState().setEncoding("mp3"); useAnalysisStore.getState().rebuildQualityOptions(); }}
+                  className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
+                    downloadType === "audio"
+                      ? "border-primary bg-primary/5 shadow-sm"
+                      : "border-border hover:border-muted-foreground/40 hover:bg-accent/30"
+                  }`}
+                >
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />
+                  </svg>
+                  <span className="text-xs font-medium">Audio</span>
+                  <span className="text-[10px] text-muted-foreground leading-tight">Only</span>
+                </button>
+              </div>
             </div>
             <div className="space-y-1.5">
-              <label className="text-sm text-muted-foreground">Quality</label>
+              <p className="text-sm text-muted-foreground">Quality</p>
               <Select value={selectedQuality} onValueChange={(v) => v && setSelectedQuality(v)}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select quality" />
+                  <SelectValue>
+                    {qualityOptions.length > 0 && selectedQuality === qualityOptions[0].label
+                      ? "Best for all"
+                      : selectedQuality}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {qualityOptions.length > 0 ? (
-                    qualityOptions.map((q) => (
-                      <SelectItem key={q.value} value={q.label}>{q.label}</SelectItem>
+                    qualityOptions.map((q, i) => (
+                      <SelectItem key={q.value} value={q.label}>
+                        {i === 0 ? "Best for all" : q.label}
+                      </SelectItem>
                     ))
                   ) : (
                     <>
-                      <SelectItem value="best">Best</SelectItem>
+                      <SelectItem value="best">Best for all</SelectItem>
                       <SelectItem value="1080p">1080p</SelectItem>
                       <SelectItem value="720p">720p</SelectItem>
                       <SelectItem value="480p">480p</SelectItem>

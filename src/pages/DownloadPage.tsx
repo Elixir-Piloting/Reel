@@ -38,10 +38,14 @@ export function DownloadPage() {
   const reset = useDownloadExecutionStore((s) => s.reset);
   const itemProgress = usePlaylistStore((s) => s.itemProgress);
 
+  const qualityOptions = useAnalysisStore((s) => s.qualityOptions);
   const [imgLoaded, setImgLoaded] = useState(false);
   const isPlaylistDownload = Object.keys(itemProgress).length > 0;
   const effectiveDir = outputDir || settings.default_download_folder || '';
   const canDownload = phase === "ready" && !!effectiveDir && !!selectedQuality && !isDownloading;
+  const selectedOpt = qualityOptions.find(o => o.label === selectedQuality);
+  const sizeMatch = selectedOpt?.label.match(/\(([^)]+)\)/);
+  const sizeStr = sizeMatch ? sizeMatch[1] : '';
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 py-4">
@@ -97,7 +101,7 @@ export function DownloadPage() {
           >
             <span className="flex items-center gap-2">
               <Download className="w-4 h-4" />
-              Download
+              {sizeStr ? `Download (${sizeStr})` : 'Download'}
             </span>
           </Button>
         )}

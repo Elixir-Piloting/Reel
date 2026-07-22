@@ -1,15 +1,24 @@
 import { useOptionsStore } from "@/stores/options-store";
+import { useAnalysisStore } from "@/stores/analysis-store";
 
 export function DownloadTypeSelector() {
   const downloadType = useOptionsStore((s) => s.downloadType);
   const setDownloadType = useOptionsStore((s) => s.setDownloadType);
+  const setEncoding = useOptionsStore((s) => s.setEncoding);
+  const rebuildQualityOptions = useAnalysisStore((s) => s.rebuildQualityOptions);
+
+  const handleTypeChange = (t: 'video' | 'audio') => {
+    setDownloadType(t);
+    setEncoding(t === 'audio' ? 'mp3' : 'mp4_h264');
+    rebuildQualityOptions();
+  };
 
   return (
     <div className="space-y-1.5">
       <p className="text-sm text-muted-foreground">Download Type</p>
       <div className="grid grid-cols-2 gap-3">
         <button
-          onClick={() => setDownloadType("video")}
+          onClick={() => handleTypeChange("video")}
           className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
             downloadType === "video"
               ? "border-primary bg-primary/5 shadow-sm"
@@ -24,7 +33,7 @@ export function DownloadTypeSelector() {
           <span className="text-xs text-muted-foreground text-center leading-tight">Video + Audio</span>
         </button>
         <button
-          onClick={() => setDownloadType("audio")}
+          onClick={() => handleTypeChange("audio")}
           className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
             downloadType === "audio"
               ? "border-primary bg-primary/5 shadow-sm"

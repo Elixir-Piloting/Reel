@@ -24,6 +24,7 @@ interface AnalysisState {
   setError: (error: string | null) => void;
   analyzeUrl: (url?: string) => Promise<void>;
   buildQualityOptions: (formats: FormatInfo[]) => void;
+  rebuildQualityOptions: () => void;
 }
 
 let analyzeGen = 0;
@@ -102,8 +103,19 @@ export const useAnalysisStore = create<AnalysisState>()(
   },
 
   buildQualityOptions: (formats: FormatInfo[]) => {
+    const downloadType = useOptionsStore.getState().downloadType;
+    const bestLabel = 'Best';
+    const bestValue = downloadType === 'audio' ? 'bestaudio/best' : 'bestvideo+bestaudio/best';
+    const opts: { value: string; label: string }[] = [{ value: bestValue, label: bestLabel }];
+    const filtered = formats.filter(f => {
+      if (downloadType === 'video') {
+        const hasVideo = f.video_codec && f.video_codec !== 'none' && f.video_codec !== '';
+        return hasVideo;
+      }
+      return f.audio_codec && f.audio_codec !== 'none' && f.audio_codec !== '';
+    });
     const grouped = new Map<string, { value: string; label: string }>();
-    for (const f of formats) {
+    for (const f of filtered) {
       const h = parseInt(
         f.resolution.includes('x')
           ? f.resolution.split('x')[1]
@@ -115,13 +127,19 @@ export const useAnalysisStore = create<AnalysisState>()(
       const size = f.filesize ? ` (${(f.filesize / 1024 / 1024).toFixed(1)}MB)` : '';
       grouped.set(key, { value: f.format_id, label: `${key}${size}` });
     }
-    const arr = Array.from(grouped.values());
+    const arr = [...opts, ...Array.from(grouped.values())];
     set({ qualityOptions: arr });
     const current = useOptionsStore.getState().selectedQuality;
-    if (!current && arr.length > 0) {
+    if ((!current || current === 'best') && arr.length > 0) {
       useOptionsStore.getState().setSelectedQuality(arr[0].label);
     }
-  }}),
+  },
+
+  rebuildQualityOptions: () => {
+    const formats = get().formats;
+    if (formats.length > 0) get().buildQualityOptions(formats);
+  },
+}),
   {
     name: 'analysis-store',
     storage: createJSONStorage(() => sessionStorage),
