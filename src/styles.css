@@ -178,6 +178,10 @@
 }
 .animate-scale-press:active { transform: scale(0.97); transition: transform 0.1s; }
 
+html {
+  overscroll-behavior: none;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
