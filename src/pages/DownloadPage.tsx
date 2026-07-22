@@ -118,7 +118,7 @@ export function DownloadPage() {
       {!isPlaylistDownload && (
         <AnimatedSection show={phase === "completed"}>
           {phase === "completed" && (
-            <Button className="w-full h-11 text-base font-medium" onClick={() => { reset(); useAnalysisStore.getState().setPhase('ready'); }}>
+            <Button className="w-full h-11 text-base font-medium" onClick={() => { reset(); useAnalysisStore.getState().reset(); }}>
               <span className="flex items-center gap-2">
                 <Download className="w-4 h-4" />
                 Download More
@@ -131,7 +131,7 @@ export function DownloadPage() {
       {!isPlaylistDownload && (
         <AnimatedSection show={phase === "error"}>
           {phase === "error" && (
-            <Button className="w-full h-11 text-base font-medium" variant="secondary" onClick={() => { reset(); useAnalysisStore.getState().setPhase('ready'); }}>
+            <Button className="w-full h-11 text-base font-medium" variant="secondary" onClick={() => { reset(); useAnalysisStore.getState().reset(); }}>
               <span className="flex items-center gap-2">
                 <RotateCcw className="w-4 h-4" />
                 Try Again

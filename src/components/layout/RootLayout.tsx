@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Settings, Download } from "lucide-react";
+import { Settings } from "lucide-react";
+import { TitleBar } from "./TitleBar";
 import { DownloadSimple, House } from "@phosphor-icons/react";
 import { Toaster } from "@/components/ui/sonner";
 import { useThemeStore, type Theme } from "@/stores/theme-store";
@@ -71,7 +72,7 @@ export function RootLayout() {
   return (
     <>
       <div className="h-screen bg-background flex flex-col overflow-hidden">
-        <div className="h-10 shrink-0" />
+        <TitleBar />
 
         <div className="flex flex-1 min-h-0">
           <aside className="w-14 shrink-0 flex flex-col items-center gap-2">

@@ -22,6 +22,7 @@ interface AnalysisState {
   setUrl: (url: string) => void;
   setPhase: (phase: Phase) => void;
   setError: (error: string | null) => void;
+  reset: () => void;
   analyzeUrl: (url?: string) => Promise<void>;
   buildQualityOptions: (formats: FormatInfo[]) => void;
   rebuildQualityOptions: () => void;
@@ -45,6 +46,16 @@ export const useAnalysisStore = create<AnalysisState>()(
   setPhase: (phase: Phase) => set({ phase }),
 
   setError: (error: string | null) => set({ error }),
+
+  reset: () => set({
+    url: '',
+    metadata: null,
+    playlistTitle: null,
+    formats: [],
+    qualityOptions: [],
+    error: null,
+    phase: 'idle',
+  }),
 
   analyzeUrl: async (inputUrl?: string) => {
     const url = (inputUrl !== undefined ? inputUrl : get().url).trim();
