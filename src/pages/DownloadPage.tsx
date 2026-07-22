@@ -6,7 +6,6 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { UrlInput } from "@/features/url-input";
 import { VideoInfo } from "@/features/video-info";
 import { DownloadTypeSelector, QualitySelector, RangeSelector, EncodingSelector, DestinationSelector } from "@/features/download-options";
-import { DownloadProgress } from "@/features/download-execution";
 import { PlaylistSelector } from "@/features/playlist";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -34,8 +33,6 @@ export function DownloadPage() {
   const selectedQuality = useOptionsStore((s) => s.selectedQuality);
   const settings = useSettingsStore((s) => s.settings);
   const isDownloading = useDownloadExecutionStore((s) => s.isDownloading);
-  const downloadItem = useDownloadExecutionStore((s) => s.downloadItem);
-  const downloadStatus = useDownloadExecutionStore((s) => s.downloadStatus);
   const startDownload = useDownloadExecutionStore((s) => s.startDownload);
   const reset = useDownloadExecutionStore((s) => s.reset);
   const itemProgress = usePlaylistStore((s) => s.itemProgress);
@@ -108,12 +105,6 @@ export function DownloadPage() {
           </Button>
         )}
       </AnimatedSection>
-
-      {!isPlaylistDownload && (isDownloading || !!downloadItem) && (
-        <AnimatedSection show={true}>
-          <DownloadProgress big={isDownloading || downloadStatus === "Completed"} />
-        </AnimatedSection>
-      )}
 
       <AnimatedSection show={phase === "error"}>
         {phase === "error" && error && (

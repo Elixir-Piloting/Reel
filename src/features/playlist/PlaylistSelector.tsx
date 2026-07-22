@@ -126,7 +126,13 @@ export function PlaylistSelector() {
                     {entry.duration > 0 ? <span className="text-muted-foreground">{formatDuration(entry.duration)}</span> : ""}
                     {isDownloaded && status && status !== "queued" && (
                       <span className="ml-2">
-                        {status === "downloading" && progressItem ? <span className="text-muted-foreground">{Math.round(progressItem.progress)}%</span> : ""}
+                        {status === "downloading" && progressItem ? <span className="text-muted-foreground inline-flex items-center gap-1">
+                          <svg width={12} height={12} viewBox="0 0 12 12" className="shrink-0 text-primary">
+                            <circle cx={6} cy={6} r={4.8} fill="none" stroke="currentColor" strokeWidth={1.2} opacity="0.15" />
+                            <circle cx={6} cy={6} r={4.8} fill="none" stroke="currentColor" strokeWidth={1.2} strokeDasharray={30.16} strokeDashoffset={30.16 - (Math.min(progressItem.progress, 100) / 100) * 30.16} strokeLinecap="round" transform="rotate(-90 6 6)" />
+                          </svg>
+                          {Math.round(progressItem.progress)}%
+                        </span> : ""}
                         {status === "completed" ? <span className="text-green-600 dark:text-green-400">Downloaded</span> : ""}
                         {status === "failed" ? <span className="text-destructive">Failed</span> : ""}
                         {status === "cancelled" ? <span className="text-destructive">Cancelled</span> : ""}
@@ -134,9 +140,10 @@ export function PlaylistSelector() {
                     )}
                   </p>
                   {isDownloaded && status === "downloading" && progressItem && progressItem.progress > 0 && (
-                    <div className="w-full h-1 bg-muted rounded-full mt-1 overflow-hidden">
-                      <div className="h-full bg-primary rounded-full transition-all duration-300" style={{ width: `${progressItem.progress}%` }} />
-                    </div>
+                    <svg width={14} height={14} viewBox="0 0 14 14" className="shrink-0 text-primary inline-block align-middle ml-1">
+                      <circle cx={7} cy={7} r={5.6} fill="none" stroke="currentColor" strokeWidth={1.4} opacity="0.15" />
+                      <circle cx={7} cy={7} r={5.6} fill="none" stroke="currentColor" strokeWidth={1.4} strokeDasharray={35.19} strokeDashoffset={35.19 - (Math.min(progressItem.progress, 100) / 100) * 35.19} strokeLinecap="round" transform="rotate(-90 7 7)" />
+                    </svg>
                   )}
                 </div>
                 {isDownloaded && status === "downloading" && (

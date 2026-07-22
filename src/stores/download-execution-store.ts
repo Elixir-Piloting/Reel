@@ -81,6 +81,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
       });
       set({ downloadItem: item });
       useAnalysisStore.getState().setPhase('idle');
+      useAnalysisStore.getState().setUrl('');
       notify.downloadStarted(metadata.title);
     } catch (e) {
       logger.error('Failed to start download', { error: e });
