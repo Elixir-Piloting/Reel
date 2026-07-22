@@ -223,6 +223,8 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
     const unlistenProgress = await listen<{ id: string; progress: number; speed: string; eta: string; status: string }>(
       'download-progress',
       (event) => {
+        const currentItem = get().downloadItem;
+        if (!currentItem || event.payload.id !== currentItem.id) return;
         if (get().downloadStatus === 'Cancelled') return;
         batch({
           downloadProgress: event.payload.progress,
@@ -233,7 +235,9 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
       },
     );
     const unlistenItem = await listen<DownloadItem>('download-item-update', (event) => {
-      const prev = get().downloadItem;
+      const currentItem = get().downloadItem;
+      if (!currentItem || event.payload.id !== currentItem.id) return;
+      const prev = currentItem;
       const payload = event.payload;
       const statusStr = typeof payload.status === 'string' ? payload.status : Object.keys(payload.status as Record<string, string>)[0] || 'Unknown';
       const isDone = ['Completed', 'Failed', 'Cancelled'].includes(statusStr);
