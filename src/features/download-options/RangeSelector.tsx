@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@base-ui/react/slider";
@@ -13,6 +13,15 @@ export function RangeSelector() {
   const setEndTime = useOptionsStore((s) => s.setEndTime);
   const metadata = useAnalysisStore((s) => s.metadata);
   const maxTime = metadata?.duration || 0;
+  const prevMax = useRef(0);
+
+  useEffect(() => {
+    if (maxTime > 0 && maxTime !== prevMax.current) {
+      prevMax.current = maxTime;
+      if (endTime <= 0 || endTime > maxTime) setEndTime(maxTime);
+      if (startTime < 0 || startTime >= maxTime) setStartTime(0);
+    }
+  }, [maxTime]);
 
   const handleValueChange = useCallback(
     (value: number | readonly number[]) => {
@@ -37,25 +46,27 @@ export function RangeSelector() {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 min-w-0">
       <Label className="text-sm text-muted-foreground">Duration Range</Label>
 
-      <Slider.Root
-        value={[startTime, endTime]}
-        onValueChange={handleValueChange}
-        min={0}
-        max={maxTime}
-        step={1}
-        minStepsBetweenValues={1}
-      >
-        <Slider.Control>
-          <Slider.Track className="relative h-2 w-full bg-secondary rounded-full cursor-pointer">
-            <Slider.Indicator className="absolute h-full bg-primary rounded-full" />
-            <Slider.Thumb className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-2 border-background shadow cursor-grab active:cursor-grabbing data-[focus-visible]:outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-ring data-[focus-visible]:ring-offset-2" />
-            <Slider.Thumb className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-2 border-background shadow cursor-grab active:cursor-grabbing data-[focus-visible]:outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-ring data-[focus-visible]:ring-offset-2" />
-          </Slider.Track>
-        </Slider.Control>
-      </Slider.Root>
+      <div className="w-full">
+        <Slider.Root
+          value={[startTime, endTime]}
+          onValueChange={handleValueChange}
+          min={0}
+          max={maxTime}
+          step={1}
+          minStepsBetweenValues={1}
+        >
+          <Slider.Control>
+            <Slider.Track className="relative h-2 w-full bg-secondary rounded-full cursor-pointer">
+              <Slider.Indicator className="absolute h-full bg-primary rounded-full" />
+              <Slider.Thumb className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-2 border-background shadow cursor-grab active:cursor-grabbing data-[focus-visible]:outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-ring data-[focus-visible]:ring-offset-2" />
+              <Slider.Thumb className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-2 border-background shadow cursor-grab active:cursor-grabbing data-[focus-visible]:outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-ring data-[focus-visible]:ring-offset-2" />
+            </Slider.Track>
+          </Slider.Control>
+        </Slider.Root>
+      </div>
 
       <div className="flex items-center gap-3">
         <div className="flex-1">
