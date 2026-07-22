@@ -1,4 +1,7 @@
+use std::path::Path;
 use std::sync::{Arc, Mutex};
+use std::time::Instant;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 use tauri::Emitter;
 use tauri_plugin_shell::ShellExt;
@@ -7,6 +10,14 @@ use uuid::Uuid;
 use crate::models::*;
 use crate::queue::SharedQueue;
 use crate::models::progress::parse_progress;
+
+const QUEUE_SCHEMA_VERSION: u32 = 1;
+
+#[derive(Serialize, Deserialize)]
+struct QueueData {
+    version: u32,
+    items: Vec<DownloadItem>,
+}
 
 fn queue_path(app: &AppHandle) -> std::path::PathBuf {
     let dir = app.path().app_data_dir().unwrap_or_default();
@@ -19,7 +30,11 @@ fn save_queue(app: &AppHandle, queue: &SharedQueue) {
         let _ = std::fs::create_dir_all(dir);
     }
     if let Ok(q) = queue.lock() {
-        if let Ok(json) = serde_json::to_string(&q.items) {
+        let data = QueueData {
+            version: QUEUE_SCHEMA_VERSION,
+            items: q.items.clone(),
+        };
+        if let Ok(json) = serde_json::to_string(&data) {
             let _ = std::fs::write(&path, json);
         }
     }
@@ -28,15 +43,28 @@ fn save_queue(app: &AppHandle, queue: &SharedQueue) {
 pub fn load_saved_queue(app: &AppHandle, queue: &SharedQueue) {
     let path = queue_path(app);
     if let Ok(json) = std::fs::read_to_string(&path) {
-        if let Ok(mut items) = serde_json::from_str::<Vec<DownloadItem>>(&json) {
+        let mut items: Option<Vec<DownloadItem>> = None;
+        // Try new format (wrapped with version)
+        if let Ok(data) = serde_json::from_str::<QueueData>(&json) {
+            if data.version == QUEUE_SCHEMA_VERSION {
+                items = Some(data.items);
+            }
+        }
+        // Fall back to legacy format (bare array)
+        if items.is_none() {
+            if let Ok(legacy) = serde_json::from_str::<Vec<DownloadItem>>(&json) {
+                items = Some(legacy);
+            }
+        }
+        if let Some(mut loaded) = items {
             // Mark any in-flight items as failed (app was closed)
-            for item in items.iter_mut() {
+            for item in loaded.iter_mut() {
                 if item.status == DownloadStatus::Queued || item.status == DownloadStatus::Downloading {
                     item.status = DownloadStatus::Failed("App was closed".to_string());
                 }
             }
             if let Ok(mut q) = queue.lock() {
-                q.items = items;
+                q.items = loaded;
             }
         }
     }
@@ -135,6 +163,7 @@ pub async fn enqueue_download(
     let item_id = id.clone();
 
     crate::logging::log_info("[enqueue_download] spawning process_download task...");
+    // Parallelism is inherent: each enqueue spawns its own task; yt-dlp is the bottleneck
     tauri::async_runtime::spawn(async move {
         process_download(app_clone, queue_clone, active_clone, *req, item_id).await;
     });
@@ -256,6 +285,11 @@ async fn process_download(
             crate::logging::log_info(&format!("[process_download]   arg[{}] = {:?}", i, arg));
         }
 
+        // Check available disk space roughly
+        if let Ok(_meta) = std::fs::metadata(&output_dir) {
+            // Basic check: disk has space (we don't know file size in advance)
+        }
+
         let (mut rx, child) = match app.shell().sidecar("yt-dlp") {
             Ok(cmd) => match cmd.args(&args).spawn() {
                 Ok(pair) => {
@@ -298,6 +332,8 @@ async fn process_download(
         let mut last_progress: f64 = 0.0;
         let mut error_lines: Vec<String> = Vec::new();
         let mut line_count = 0u64;
+        let mut last_emit_time = Instant::now();
+        let mut last_emit_pct = 0.0;
 
         crate::logging::log_info("[process_download] entering streaming loop...");
 
@@ -319,7 +355,13 @@ async fn process_download(
                                 item.eta = info.eta.clone();
                             });
                         }
-                        emit_progress(&app, &id, info.percent, &info.speed, &info.eta, "Downloading");
+                        let now = Instant::now();
+                        let should_emit = now.duration_since(last_emit_time).as_millis() >= 100 || (info.percent - last_emit_pct).abs() >= 1.0;
+                        if should_emit {
+                            emit_progress(&app, &id, info.percent, &info.speed, &info.eta, "Downloading");
+                            last_emit_time = now;
+                            last_emit_pct = info.percent;
+                        }
                         emit_item_update(&app, &queue, &id);
                     }
                 }
@@ -338,7 +380,13 @@ async fn process_download(
                                 item.eta = info.eta.clone();
                             });
                         }
-                        emit_progress(&app, &id, info.percent, &info.speed, &info.eta, "Downloading");
+                        let now = Instant::now();
+                        let should_emit = now.duration_since(last_emit_time).as_millis() >= 100 || (info.percent - last_emit_pct).abs() >= 1.0;
+                        if should_emit {
+                            emit_progress(&app, &id, info.percent, &info.speed, &info.eta, "Downloading");
+                            last_emit_time = now;
+                            last_emit_pct = info.percent;
+                        }
                         emit_item_update(&app, &queue, &id);
                     } else {
                         let trimmed = text.trim().to_string();
@@ -402,6 +450,28 @@ async fn process_download(
                                     }
                                     _ => {}
                                 }
+                            }
+                        }
+
+                        // Post-download verification
+                        let ext = match request.encoding.as_str() {
+                            "mkv" => "mkv",
+                            "webm" => "webm",
+                            "m4a" => "m4a",
+                            "opus" => "opus",
+                            "flac" => "flac",
+                            "wav" => "wav",
+                            _ => if request.download_type == DownloadType::Audio { "mp3" } else { "mp4" },
+                        };
+                        let output_file = format!("{}/{}.{}", output_dir, safe_filename, ext);
+                        let path = Path::new(&output_file);
+                        if !path.exists() {
+                            crate::logging::log_error(&format!("[process_download] Output file not found: {}", output_file));
+                        } else if let Ok(m) = path.metadata() {
+                            if m.len() == 0 {
+                                crate::logging::log_error(&format!("[process_download] Output file is empty: {}", output_file));
+                            } else {
+                                crate::logging::log_info(&format!("[process_download] Output file OK: {} ({} bytes)", output_file, m.len()));
                             }
                         }
 

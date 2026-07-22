@@ -3,12 +3,16 @@ import type { VideoMeta, FormatInfo, AnalyzeResponse } from '../shared/lib/types
 import { dataService } from '../shared/lib/data-service';
 import { logger } from '../shared/lib/logger';
 import { notify } from '../features/notifications/notificationService';
+import { usePlaylistStore } from './playlist-store';
+import { useOptionsStore } from './options-store';
+import { getCachedAnalysis, setCachedAnalysis } from '../shared/lib/analysis-cache';
 
 export type Phase = 'idle' | 'analyzing' | 'ready' | 'playlist' | 'downloading' | 'completed' | 'error';
 
 interface AnalysisState {
   url: string;
   metadata: VideoMeta | null;
+  playlistTitle: string | null;
   formats: FormatInfo[];
   qualityOptions: { value: string; label: string }[];
   error: string | null;
@@ -26,6 +30,7 @@ let analyzeGen = 0;
 export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   url: '',
   metadata: null,
+  playlistTitle: null,
   formats: [],
   qualityOptions: [],
   error: null,
@@ -41,19 +46,49 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     const url = (inputUrl !== undefined ? inputUrl : get().url).trim();
     if (!url) return;
     const gen = ++analyzeGen;
-    set({ phase: 'analyzing', error: null, metadata: null, formats: [], qualityOptions: [] });
+    if (url !== get().url) {
+      useOptionsStore.getState().resetOptions();
+    }
+    set({ phase: 'analyzing', error: null, metadata: null, playlistTitle: null, formats: [], qualityOptions: [] });
     try {
+      const cached = getCachedAnalysis(url);
+      if (cached) {
+        const isPlaylist = !!cached.playlist_entries?.length;
+        set({
+          metadata: cached.video_meta,
+          playlistTitle: isPlaylist ? cached.playlist_title || null : null,
+          formats: cached.formats || [],
+          phase: isPlaylist ? 'playlist' : 'ready',
+        });
+        get().buildQualityOptions(cached.formats || []);
+        if (isPlaylist && cached.playlist_entries) {
+          usePlaylistStore.getState().setEntries(cached.playlist_entries.map((e) => ({ id: e.url, title: e.title, duration: e.duration, thumbnail: e.thumbnail, url: e.url })));
+          notify.playlistFound(cached.playlist_entries.length);
+          if (!useOptionsStore.getState().selectedQuality) {
+            useOptionsStore.getState().setSelectedQuality('best');
+          }
+        } else if (cached.video_meta) {
+          notify.analysisComplete(cached.video_meta.title);
+        }
+        return;
+      }
       const result = await dataService.analyzeVideo(url);
       if (gen !== analyzeGen) return;
+      setCachedAnalysis(url, result);
       const isPlaylist = !!result.playlist_entries?.length;
       set({
         metadata: result.video_meta,
+        playlistTitle: isPlaylist ? result.playlist_title || null : null,
         formats: result.formats || [],
         phase: isPlaylist ? 'playlist' : 'ready',
       });
       get().buildQualityOptions(result.formats || []);
-      if (isPlaylist) {
-        notify.playlistFound(result.playlist_entries!.length);
+      if (isPlaylist && result.playlist_entries) {
+        usePlaylistStore.getState().setEntries(result.playlist_entries.map((e) => ({ id: e.url, title: e.title, duration: e.duration, thumbnail: e.thumbnail, url: e.url })));
+        notify.playlistFound(result.playlist_entries.length);
+        if (!useOptionsStore.getState().selectedQuality) {
+          useOptionsStore.getState().setSelectedQuality('best');
+        }
       } else if (result.video_meta) {
         notify.analysisComplete(result.video_meta.title);
       }
@@ -66,12 +101,22 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
   buildQualityOptions: (formats: FormatInfo[]) => {
     const grouped = new Map<string, { value: string; label: string }>();
     for (const f of formats) {
-      const h = parseInt(f.resolution.split('x')[1] ?? '0', 10);
+      const h = parseInt(
+        f.resolution.includes('x')
+          ? f.resolution.split('x')[1]
+          : f.resolution.replace(/(\d+).*/, '$1'),
+        10,
+      );
       const key = h > 0 ? `${h}p` : 'audio';
       if (grouped.has(key)) continue;
       const size = f.filesize ? ` (${(f.filesize / 1024 / 1024).toFixed(1)}MB)` : '';
       grouped.set(key, { value: f.format_id, label: `${key}${size}` });
     }
-    set({ qualityOptions: Array.from(grouped.values()) });
+    const arr = Array.from(grouped.values());
+    set({ qualityOptions: arr });
+    const current = useOptionsStore.getState().selectedQuality;
+    if (!current && arr.length > 0) {
+      useOptionsStore.getState().setSelectedQuality(arr[0].label);
+    }
   },
 }));

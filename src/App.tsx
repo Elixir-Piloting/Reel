@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
-import { Download, Sun, Moon, Monitor } from "lucide-react"
+import { Download, Sun, Moon, Monitor, Settings, History, X, ArrowLeft } from "lucide-react"
 import { DownloadPage } from "@/pages/DownloadPage"
+import { SettingsPage } from "@/features/settings/SettingsPage"
+import { HistoryPanel } from "@/features/download-history/HistoryPanel"
 import { Toaster } from "@/components/ui/sonner"
 import { useSettingsStore } from "@/stores/settings-store"
 import { useDownloadExecutionStore } from "@/stores/download-execution-store"
@@ -34,7 +36,9 @@ const themes: { value: Theme; icon: React.ReactNode; label: string }[] = [
 
 export default function App() {
   const [theme, setTheme] = useState<Theme>(getInitialTheme)
-  const { loadSettings } = useSettingsStore()
+  const [showSettings, setShowSettings] = useState(false)
+  const [showHistory, setShowHistory] = useState(false)
+  const loadSettings = useSettingsStore((s) => s.loadSettings)
   const initProgressListener = useDownloadExecutionStore((s) => s.initProgressListener)
 
   useEffect(() => {
@@ -57,17 +61,31 @@ export default function App() {
     }
   }, [theme])
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setShowSettings(false)
+        setShowHistory(false)
+      }
+    }
+    if (showSettings || showHistory) {
+      document.addEventListener("keydown", onKey)
+      return () => document.removeEventListener("keydown", onKey)
+    }
+  }, [showSettings, showHistory])
+
   return (
     <>
       <div className="min-h-screen bg-background">
-        <header className="flex h-14 items-center justify-between border-b px-6">
-          <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary text-primary-foreground">
-              <Download className="size-4" />
-            </div>
-            <span className="text-base font-semibold">YTMate</span>
-          </div>
+        <header className="sticky top-0 z-50 h-14 border-b border-border/40 bg-background/80 backdrop-blur-md px-6 flex items-center justify-between">
+          <h1 className="text-heading font-semibold tracking-tight">YTMate</h1>
           <div className="flex items-center gap-1">
+            <button onClick={() => setShowHistory(true)} className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors" title="History">
+              <History className="size-4" />
+            </button>
+            <button onClick={() => setShowSettings(true)} className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors" title="Settings">
+              <Settings className="size-4" />
+            </button>
             {themes.map((t) => (
               <button
                 key={t.value}
@@ -87,6 +105,22 @@ export default function App() {
         <main className="px-6 pb-8">
           <DownloadPage />
         </main>
+        {showSettings && (
+          <div className="fixed inset-0 z-[60] bg-background overflow-y-auto">
+            <div className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border px-6 py-3 flex items-center justify-between">
+              <button onClick={() => setShowSettings(false)} className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </button>
+              <h1 className="absolute left-1/2 -translate-x-1/2 text-heading font-semibold">Settings</h1>
+              <div className="w-16" />
+            </div>
+            <div className="px-6 pb-8">
+              <SettingsPage />
+            </div>
+          </div>
+        )}
+        {showHistory && <HistoryPanel onClose={() => setShowHistory(false)} />}
       </div>
       <Toaster theme={theme} />
     </>

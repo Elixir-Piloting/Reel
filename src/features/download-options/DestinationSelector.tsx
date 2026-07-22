@@ -13,7 +13,7 @@ export function DestinationSelector() {
   const downloadType = useOptionsStore((s) => s.downloadType);
   const filename = useOptionsStore((s) => s.filename);
   const metadata = useAnalysisStore((s) => s.metadata);
-  const { settings } = useSettingsStore();
+  const settings = useSettingsStore((s) => s.settings);
 
   const dir = outputDir || settings.default_download_folder;
   const ext = downloadType === "audio" ? "mp3" : "mp4";

@@ -26,11 +26,8 @@ export function QualitySelector() {
         </SelectTrigger>
         <SelectContent>
           {qualityOptions.map((q) => (
-            <SelectItem key={q.label} value={q.label}>
-              {downloadType === "audio"
-                ? q.label
-                : q.label
-              }
+            <SelectItem key={q.value} value={q.label}>
+              {q.label}
             </SelectItem>
           ))}
         </SelectContent>

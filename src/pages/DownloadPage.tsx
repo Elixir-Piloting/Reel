@@ -2,13 +2,14 @@ import { useAnalysisStore } from "@/stores/analysis-store";
 import { useOptionsStore } from "@/stores/options-store";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
 import { usePlaylistStore } from "@/stores/playlist-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { UrlInput } from "@/features/url-input";
 import { VideoInfo } from "@/features/video-info";
 import { DownloadTypeSelector, QualitySelector, RangeSelector, EncodingSelector, DestinationSelector } from "@/features/download-options";
 import { DownloadProgress } from "@/features/download-execution";
 import { PlaylistSelector } from "@/features/playlist";
-import { PresetSelector } from "@/features/presets";
 import { Button } from "@/components/ui/button";
+import { SettingsCard } from "@/components/ui/settings-card";
 import { Download, RotateCcw } from "lucide-react";
 
 function AnimatedSection({ show, children }: { show: boolean; children: React.ReactNode }) {
@@ -29,13 +30,16 @@ export function DownloadPage() {
   const error = useAnalysisStore((s) => s.error);
   const setError = useAnalysisStore((s) => s.setError);
   const outputDir = useOptionsStore((s) => s.outputDir);
+  const selectedQuality = useOptionsStore((s) => s.selectedQuality);
+  const settings = useSettingsStore((s) => s.settings);
   const isDownloading = useDownloadExecutionStore((s) => s.isDownloading);
   const startDownload = useDownloadExecutionStore((s) => s.startDownload);
   const reset = useDownloadExecutionStore((s) => s.reset);
   const itemProgress = usePlaylistStore((s) => s.itemProgress);
 
   const isPlaylistDownload = Object.keys(itemProgress).length > 0;
-  const canDownload = phase === "ready" && !!outputDir && !isDownloading;
+  const effectiveDir = outputDir || settings.default_download_folder || '';
+  const canDownload = phase === "ready" && !!effectiveDir && !!selectedQuality && !isDownloading;
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 py-4">
@@ -48,12 +52,21 @@ export function DownloadPage() {
       <AnimatedSection show={phase === "ready"}>
         {phase === "ready" && (
           <>
-            <DownloadTypeSelector />
-            <QualitySelector />
-            <RangeSelector />
-            <EncodingSelector />
-            <PresetSelector />
-            <DestinationSelector />
+            <SettingsCard title="Download Type">
+              <DownloadTypeSelector />
+            </SettingsCard>
+            <SettingsCard title="Quality">
+              <QualitySelector />
+            </SettingsCard>
+            <SettingsCard title="Duration Range">
+              <RangeSelector />
+            </SettingsCard>
+            <SettingsCard title="Encoding">
+              <EncodingSelector />
+            </SettingsCard>
+            <SettingsCard title="Destination">
+              <DestinationSelector />
+            </SettingsCard>
           </>
         )}
       </AnimatedSection>

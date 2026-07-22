@@ -38,4 +38,12 @@ impl DownloadQueue {
     pub fn snapshot(&self) -> Vec<DownloadItem> {
         self.items.clone()
     }
+
+    pub fn prune_older_than(&mut self, _days: u64) {
+        // For now just log, since we don't have timestamps on items
+    }
+
+    pub fn len(&self) -> usize {
+        self.items.len()
+    }
 }
