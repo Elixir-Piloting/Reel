@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { X, FolderOpen, XCircle } from "lucide-react";
+import { X, FolderOpen, XCircle, RotateCcw, Trash2 } from "lucide-react";
 import { CheckCircleIcon } from "@phosphor-icons/react";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
 import { dataService } from "@/shared/lib/data-service";
@@ -120,7 +120,7 @@ export function DownloadProgress({ big, retry }: Props) {
             )}
           </div>
         </div>
-        <div className="shrink-0">
+        <div className="shrink-0 flex items-center gap-1">
           {active && (
             <button
               onClick={cancelDownload}
@@ -128,6 +128,35 @@ export function DownloadProgress({ big, retry }: Props) {
               title="Cancel"
             >
               <X className="h-4 w-4" />
+            </button>
+          )}
+          {(st === "Failed" || st === "Cancelled") && (
+            <>
+              {retry && (
+                <button
+                  onClick={retry}
+                  className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8 text-muted-foreground"
+                  title="Retry"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </button>
+              )}
+              <button
+                onClick={() => { dataService.removeFromQueue(downloadItem.id); useDownloadExecutionStore.getState().reset(); }}
+                className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8 text-muted-foreground"
+                title="Dismiss"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </>
+          )}
+          {completed && (
+            <button
+              onClick={() => { dataService.removeFromQueue(downloadItem.id); useDownloadExecutionStore.getState().reset(); }}
+              className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8 text-muted-foreground"
+              title="Dismiss"
+            >
+              <Trash2 className="h-4 w-4" />
             </button>
           )}
         </div>

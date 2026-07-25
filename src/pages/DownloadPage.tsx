@@ -7,6 +7,7 @@ import { UrlInput } from "@/features/url-input";
 import { VideoInfo } from "@/features/video-info";
 import { DownloadTypeSelector, QualitySelector, RangeSelector, EncodingSelector, DestinationSelector } from "@/features/download-options";
 import { PlaylistSelector } from "@/features/playlist";
+import { DownloadProgress } from "@/features/download-execution";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, RotateCcw } from "lucide-react";
@@ -44,7 +45,7 @@ export function DownloadPage() {
   const isPlaylistDownload = Object.keys(itemProgress).length > 0;
   const effectiveDir = outputDir || settings.default_download_folder || '';
   const hasFormats = qualityOptions.length > 0;
-  const canDownload = phase === "ready" && !!effectiveDir && dirExists && !!selectedQuality && !isDownloading;
+  const canDownload = phase === "ready" && !!effectiveDir && dirExists && !!selectedQuality;
 
   useEffect(() => {
     if (effectiveDir) {
@@ -58,6 +59,8 @@ export function DownloadPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-5 py-4">
       <UrlInput />
+
+      <DownloadProgress retry={() => { const item = useDownloadExecutionStore.getState().downloadItem; if (item) dataService.retryDownload(item.id).then(() => { reset(); }); }} />
 
       <AnimatedSection show={phase === "analyzing"}>
         {phase === "analyzing" && <VideoInfo />}
