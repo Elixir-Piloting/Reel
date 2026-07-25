@@ -465,6 +465,8 @@ pub(crate) async fn process_download(
         args.push("--no-playlist".to_string());
         if request.continue_mode {
             args.push("--continue".to_string());
+        } else {
+            args.push("--no-continue".to_string());
         }
         args.push("--no-part".to_string());
         args.push("--no-mtime".to_string());
@@ -894,6 +896,12 @@ pub async fn retry_download(
         q.get(&id).cloned()
     };
     let item = existing.ok_or_else(|| "Download item not found".to_string())?;
+
+    // Remove the old failed/cancelled item so we don't get duplicates
+    {
+        let mut q = queue.lock().map_err(|e| e.to_string())?;
+        q.remove(&id);
+    }
 
     let req = DownloadRequest {
         url: item.url.clone(),

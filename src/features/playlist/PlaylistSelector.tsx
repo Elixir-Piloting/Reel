@@ -63,13 +63,14 @@ export function PlaylistSelector() {
                 onClick={() => phase === "playlist" && toggleEntry(idx)}
                 className={`flex items-center gap-3 px-2 py-1.5 rounded-md transition-colors ${
                   phase === "playlist" ? "hover:bg-accent/50 cursor-pointer" : ""
-                } ${status === "completed" ? "opacity-60" : ""} ${status === "failed" ? "bg-destructive/5" : ""}`}
+                } ${status === "failed" ? "bg-destructive/5" : ""}`}
               >
                 {phase === "playlist" ? (
                   <button
+                    type="button"
                     role="checkbox"
                     aria-checked={selectedIndices.includes(idx)}
-                    onClick={() => toggleEntry(idx)}
+                    onClick={(e) => { e.stopPropagation(); toggleEntry(idx); }}
                     className={`w-4 h-4 rounded shrink-0 border flex items-center justify-center transition-colors ${
                       selectedIndices.includes(idx)
                         ? "bg-primary border-primary"
@@ -133,18 +134,13 @@ export function PlaylistSelector() {
                           </svg>
                           {Math.round(progressItem.progress)}%
                         </span> : ""}
-                        {status === "completed" ? <span className="text-green-600 dark:text-green-400">Downloaded</span> : ""}
+                        {status === "completed" && progressItem ? <span className="text-green-600 dark:text-green-400">Downloaded {Math.round(progressItem.progress)}%</span> : ""}
+                        {status === "completed" && !progressItem ? <span className="text-green-600 dark:text-green-400">Downloaded</span> : ""}
                         {status === "failed" ? <span className="text-destructive">Failed</span> : ""}
                         {status === "cancelled" ? <span className="text-destructive">Cancelled</span> : ""}
                       </span>
                     )}
                   </p>
-                  {isDownloaded && status === "downloading" && progressItem && progressItem.progress > 0 && (
-                    <svg width={14} height={14} viewBox="0 0 14 14" className="shrink-0 text-primary inline-block align-middle ml-1">
-                      <circle cx={7} cy={7} r={5.6} fill="none" stroke="currentColor" strokeWidth={1.4} opacity="0.15" />
-                      <circle cx={7} cy={7} r={5.6} fill="none" stroke="currentColor" strokeWidth={1.4} strokeDasharray={35.19} strokeDashoffset={35.19 - (Math.min(progressItem.progress, 100) / 100) * 35.19} strokeLinecap="round" transform="rotate(-90 7 7)" />
-                    </svg>
-                  )}
                 </div>
                 {isDownloaded && status === "downloading" && (
                   <div className="shrink-0">
@@ -170,7 +166,7 @@ export function PlaylistSelector() {
               <p className="text-sm text-muted-foreground">Download Type</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => { setDownloadType("video"); useOptionsStore.getState().setEncoding("mp4_h264"); useAnalysisStore.getState().rebuildQualityOptions(); }}
+                  onClick={() => { setDownloadType("video"); useOptionsStore.getState().setEncoding("mp4_h264"); useAnalysisStore.getState().rebuildQualityOptions(); useOptionsStore.getState().setSelectedQuality('best'); }}
                   className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
                     downloadType === "video"
                       ? "border-primary bg-primary/5 shadow-sm"
@@ -185,7 +181,7 @@ export function PlaylistSelector() {
                   <span className="text-[10px] text-muted-foreground leading-tight">+ Audio</span>
                 </button>
                 <button
-                  onClick={() => { setDownloadType("audio"); useOptionsStore.getState().setEncoding("mp3"); useAnalysisStore.getState().rebuildQualityOptions(); }}
+                  onClick={() => { setDownloadType("audio"); useOptionsStore.getState().setEncoding("mp3"); useAnalysisStore.getState().rebuildQualityOptions(); useOptionsStore.getState().setSelectedQuality('best'); }}
                   className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
                     downloadType === "audio"
                       ? "border-primary bg-primary/5 shadow-sm"

@@ -7,16 +7,22 @@ import { useAnalysisStore } from "@/stores/analysis-store";
 import { dataService } from "@/shared/lib/data-service";
 import { useSettingsStore } from "@/stores/settings-store";
 
+const EXT_MAP: Record<string, string> = {
+  mp4_h264: "mp4", mp4_h265: "mp4", mkv: "mkv", webm: "webm",
+  mp3: "mp3", m4a: "m4a", opus: "opus", flac: "flac", wav: "wav",
+};
+
 export function DestinationSelector() {
   const outputDir = useOptionsStore((s) => s.outputDir);
   const setOutputDir = useOptionsStore((s) => s.setOutputDir);
   const downloadType = useOptionsStore((s) => s.downloadType);
+  const encoding = useOptionsStore((s) => s.encoding);
   const filename = useOptionsStore((s) => s.filename);
   const metadata = useAnalysisStore((s) => s.metadata);
   const settings = useSettingsStore((s) => s.settings);
 
   const dir = outputDir || settings.default_download_folder;
-  const ext = downloadType === "audio" ? "mp3" : "mp4";
+  const ext = EXT_MAP[encoding] || (downloadType === "audio" ? "mp3" : "mp4");
   const effectiveName = (filename || metadata?.title || "video").replace(/[\\/:*?"<>|]/g, "_");
   const fullPath = dir ? `${dir}\\${effectiveName}.${ext}` : "";
 

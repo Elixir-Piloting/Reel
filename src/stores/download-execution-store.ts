@@ -109,10 +109,13 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
     const { downloadType, selectedQuality, encoding, premiereMode, outputDir } = useOptionsStore.getState();
     const settings = useSettingsStore.getState().settings;
     const effectiveDir = outputDir || settings.default_download_folder || '';
-    const { url } = useAnalysisStore.getState();
+    const { url, playlistTitle } = useAnalysisStore.getState();
     const qualityOptions = useAnalysisStore.getState().qualityOptions;
 
     if (!url || entries.length === 0) return;
+    const playlistDir = playlistTitle
+      ? `${effectiveDir}\\${playlistTitle.replace(/[\\/:*?"<>|]/g, '_')}`
+      : effectiveDir;
     useAnalysisStore.getState().setPhase('downloading');
     set({ isDownloading: true, downloadProgress: 0, downloadStatus: 'Queued' });
 
@@ -135,7 +138,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
           url: entry.url,
           format_id: formatArg,
           filename: entry.title,
-          output_dir: effectiveDir,
+          output_dir: playlistDir,
           start_time: null,
           end_time: null,
           premiere_mode: premiereMode,
