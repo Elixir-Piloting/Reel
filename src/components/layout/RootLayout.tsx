@@ -39,7 +39,7 @@ export function RootLayout() {
         const q = await dataService.getQueue();
         const active = q.filter((i: any) => {
           const s = typeof i.status === 'string' ? i.status : '';
-          return ['Queued', 'Downloading', 'Merging', 'Converting'].includes(s);
+          return ['Queued', 'Downloading', 'Merging', 'Converting', 'Paused'].includes(s);
         });
         setActiveCount(active.length);
         if (active.length === 0 && useDownloadExecutionStore.getState().isDownloading) {
@@ -89,8 +89,8 @@ export function RootLayout() {
               >
                 {item.icon}
                 {item.badge != null && (
-                  <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center w-4 h-4 rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-                    {item.badge > 9 ? "9+" : item.badge}
+                  <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                    {item.badge}
                   </span>
                 )}
               </button>

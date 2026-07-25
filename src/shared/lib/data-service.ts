@@ -29,6 +29,24 @@ class DataService {
   async saveSettings(settings: AppSettings): Promise<void> {
     return invoke<void>('save_settings', { settings });
   }
+  async retryDownload(id: string): Promise<DownloadItem> {
+    return invoke<DownloadItem>('retry_download', { id });
+  }
+  async cancelAllDownloads(): Promise<number> {
+    return invoke<number>('cancel_all_downloads');
+  }
+  async pauseDownload(id: string): Promise<boolean> {
+    return invoke<boolean>('pause_download', { id });
+  }
+  async resumeDownload(id: string): Promise<boolean> {
+    return invoke<boolean>('resume_download', { id });
+  }
+  async pauseAllDownloads(): Promise<number> {
+    return invoke<number>('pause_all_downloads');
+  }
+  async resumeAllDownloads(): Promise<number> {
+    return invoke<number>('resume_all_downloads');
+  }
   async updateYtdlp(): Promise<string> {
     return invoke<string>('update_ytdlp');
   }

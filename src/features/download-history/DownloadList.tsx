@@ -1,4 +1,4 @@
-import { FolderOpen, RotateCcw, Trash2, X, ImageIcon, Ban, XCircle } from "lucide-react";
+import { FolderOpen, RotateCcw, Trash2, X, ImageIcon, Ban, XCircle, Pause, Play } from "lucide-react";
 import { CheckCircleIcon } from "@phosphor-icons/react";
 import { dataService } from "@/shared/lib/data-service";
 import type { DownloadItem } from "@/shared/lib/types";
@@ -33,12 +33,16 @@ interface Props {
 
 function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: () => void }) {
   const st = typeof item.status === 'string' ? item.status : '';
-  const active = ['Queued', 'Downloading', 'Merging', 'Converting'].includes(st);
+  const downloading = ['Downloading', 'Merging', 'Converting'].includes(st);
+  const queued = st === 'Queued';
+  const paused = st === 'Paused';
   const completed = st === 'Completed';
   const cancelled = st === 'Cancelled';
+  const failed = st === 'Failed';
+  const terminal = completed || cancelled || failed;
 
   return (
-    <div className={`flex items-start gap-3 p-3 rounded-lg bg-elevated shadow-card ${cancelled ? 'opacity-60' : ''}`}>
+    <div className={`flex items-start gap-3 p-3 rounded-lg bg-elevated shadow-card ${terminal ? 'opacity-60' : ''}`}>
       {item.thumbnail_url ? (
         <div className="w-32 shrink-0 rounded overflow-hidden bg-muted aspect-video">
           <img src={item.thumbnail_url} alt="" className="w-full h-full object-cover" loading="lazy" />
@@ -52,7 +56,7 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
         <p className="text-sm font-medium line-clamp-2 leading-tight">{item.title}</p>
         <p className="text-xs text-muted-foreground truncate">{item.filename}</p>
         <div className="flex items-center gap-1.5 mt-1">
-          {active && (
+          {downloading && (
             <PieProgress percent={item.progress} size={20} />
           )}
           {completed && (
@@ -61,30 +65,57 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
           {cancelled && (
             <XCircle className="w-4 h-4 text-destructive shrink-0" />
           )}
-          {st === 'Failed' && (
+          {failed && (
             <span className="text-xs text-destructive">Failed</span>
           )}
-          <span className={`text-xs ${active ? 'text-muted-foreground' : completed ? 'text-muted-foreground' : cancelled ? 'text-destructive' : ''}`}>
-            {active && `downloading ${item.progress.toFixed(0)}%`}
+          {paused && (
+            <Pause className="w-4 h-4 text-muted-foreground shrink-0" />
+          )}
+          <span className={`text-xs ${downloading ? 'text-muted-foreground' : completed ? 'text-muted-foreground' : cancelled ? 'text-destructive' : failed ? 'text-destructive' : paused ? 'text-muted-foreground' : ''}`}>
+            {downloading && `downloading ${item.progress.toFixed(0)}%`}
+            {queued && 'queued'}
+            {paused && 'Paused'}
             {completed && 'downloaded'}
             {cancelled && 'Cancelled'}
+            {failed && 'Failed'}
           </span>
-          {(st === 'Queued' || st === 'Merging' || st === 'Converting') && (
+          {queued && (
+            <span className="text-xs text-muted-foreground">Queued</span>
+          )}
+          {(st === 'Merging' || st === 'Converting') && (
             <span className="text-xs text-muted-foreground capitalize">{st.toLowerCase()}</span>
           )}
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        {active && (
+        {(downloading || queued) && (
+          <>
+            <button
+              onClick={() => dataService.pauseDownload(item.id).then(onRefresh)}
+              className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
+              title="Pause"
+            >
+              <Pause className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => dataService.cancelDownload(item.id).then(onRefresh)}
+              className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
+              title="Cancel"
+            >
+              <Ban className="w-4 h-4" />
+            </button>
+          </>
+        )}
+        {paused && (
           <button
-            onClick={() => dataService.cancelDownload(item.id).then(onRefresh)}
+            onClick={() => dataService.resumeDownload(item.id).then(onRefresh)}
             className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
-            title="Cancel"
+            title="Resume"
           >
-            <Ban className="w-4 h-4" />
+            <Play className="w-4 h-4" />
           </button>
         )}
-        {(completed || cancelled) && item.output_path && (
+        {completed && item.output_path && (
           <button
             onClick={() => dataService.openInExplorer(item.output_path)}
             className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
@@ -93,7 +124,16 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
             <FolderOpen className="w-4 h-4" />
           </button>
         )}
-        {(completed || cancelled) && (
+        {(failed || cancelled) && (
+          <button
+            onClick={async () => { await dataService.retryDownload(item.id).then(() => onRefresh()); }}
+            className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
+            title="Retry"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        )}
+        {completed && (
           <button
             onClick={async () => { await dataService.removeFromQueue(item.id); onRefresh(); }}
             className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
@@ -102,7 +142,7 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
             <Trash2 className="w-4 h-4" />
           </button>
         )}
-        {st === 'Failed' && (
+        {(cancelled || failed || paused) && (
           <button
             onClick={async () => { await dataService.removeFromQueue(item.id); onRefresh(); }}
             className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
@@ -123,7 +163,15 @@ export function DownloadList({ items, onRefresh, searchQuery }: Props) {
 
   const downloading = filtered.filter((i) => {
     const s = typeof i.status === 'string' ? i.status : '';
-    return ['Queued', 'Downloading', 'Merging', 'Converting'].includes(s);
+    return ['Downloading', 'Merging', 'Converting'].includes(s);
+  });
+  const queuedItems = filtered.filter((i) => {
+    const s = typeof i.status === 'string' ? i.status : '';
+    return s === 'Queued';
+  });
+  const pausedItems = filtered.filter((i) => {
+    const s = typeof i.status === 'string' ? i.status : '';
+    return s === 'Paused';
   });
   const downloaded = filtered.filter((i) => {
     const s = typeof i.status === 'string' ? i.status : '';
@@ -133,9 +181,9 @@ export function DownloadList({ items, onRefresh, searchQuery }: Props) {
   return (
     <div className="flex flex-col gap-6">
       <section>
-        <h2 className="text-sm font-semibold text-muted-foreground mb-3">Downloading</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground mb-3">Downloading {downloading.length > 0 && `(${downloading.length})`}</h2>
         {downloading.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-8">No active downloads</p>
+          <p className="text-sm text-muted-foreground text-center py-4">No active downloads</p>
         ) : (
           <div className="space-y-2">
             {downloading.map((item) => (
@@ -145,10 +193,34 @@ export function DownloadList({ items, onRefresh, searchQuery }: Props) {
         )}
       </section>
 
-      <div className="border-t border-border" />
+      <section>
+        <h2 className="text-sm font-semibold text-muted-foreground mb-3">Queued {queuedItems.length > 0 && `(${queuedItems.length})`}</h2>
+        {queuedItems.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No queued items</p>
+        ) : (
+          <div className="space-y-2">
+            {queuedItems.map((item) => (
+              <DownloadItemCard key={item.id} item={item} onRefresh={onRefresh} />
+            ))}
+          </div>
+        )}
+      </section>
 
       <section>
-        <h2 className="text-sm font-semibold text-muted-foreground mb-3">Downloaded</h2>
+        <h2 className="text-sm font-semibold text-muted-foreground mb-3">Paused {pausedItems.length > 0 && `(${pausedItems.length})`}</h2>
+        {pausedItems.length === 0 ? null : (
+          <div className="space-y-2">
+            {pausedItems.map((item) => (
+              <DownloadItemCard key={item.id} item={item} onRefresh={onRefresh} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {downloaded.length > 0 && <div className="border-t border-border" />}
+
+      <section>
+        <h2 className="text-sm font-semibold text-muted-foreground mb-3">Downloaded {downloaded.length > 0 && `(${downloaded.length})`}</h2>
         {downloaded.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-8">No downloaded videos yet</p>
         ) : (

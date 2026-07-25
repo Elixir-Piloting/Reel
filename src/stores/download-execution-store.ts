@@ -250,7 +250,11 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
         completedFileName: isDone ? payload.filename : get().completedFileName,
       });
       if (isDone) {
-        useAnalysisStore.getState().setPhase(statusStr === 'Completed' ? 'completed' : 'error');
+        if (statusStr === 'Completed') {
+          useAnalysisStore.getState().reset();
+        } else {
+          useAnalysisStore.getState().setPhase('error');
+        }
       }
 
       if (statusStr === 'Completed' && (!prev || prev.status !== 'Completed')) {

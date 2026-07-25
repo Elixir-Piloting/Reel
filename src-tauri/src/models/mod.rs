@@ -90,6 +90,7 @@ pub enum DownloadStatus {
     Completed,
     Failed(String),
     Cancelled,
+    Paused,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

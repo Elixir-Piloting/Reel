@@ -59,8 +59,11 @@ pub fn load_saved_queue(app: &AppHandle, queue: &SharedQueue) {
         if let Some(mut loaded) = items {
             // Mark any in-flight items as failed (app was closed)
             for item in loaded.iter_mut() {
-                if item.status == DownloadStatus::Queued || item.status == DownloadStatus::Downloading {
-                    item.status = DownloadStatus::Failed("App was closed".to_string());
+                match item.status {
+                    DownloadStatus::Queued | DownloadStatus::Downloading => {
+                        item.status = DownloadStatus::Failed("App was closed".to_string());
+                    }
+                    _ => {}
                 }
             }
             if let Ok(mut q) = queue.lock() {
@@ -174,7 +177,7 @@ pub async fn enqueue_download(
     Ok(item)
 }
 
-async fn process_download(
+pub(crate) async fn process_download(
     app: AppHandle,
     queue: SharedQueue,
     active: ActiveProcesses,
@@ -586,6 +589,190 @@ pub async fn remove_from_queue(
     }
     save_queue(&app, &sq);
     Ok(true)
+}
+
+#[tauri::command]
+pub async fn cancel_all_downloads(
+    app: AppHandle,
+    active: State<'_, ActiveProcesses>,
+    queue: State<'_, SharedQueue>,
+) -> Result<u32, String> {
+    let sq = queue.inner().clone();
+    let mut count = 0u32;
+    {
+        let mut procs = active.lock().map_err(|e| e.to_string())?;
+        for (_, child) in procs.drain() {
+            let _ = child.kill();
+        }
+    }
+    {
+        let mut q = queue.lock().map_err(|e| e.to_string())?;
+        for item in q.items.iter_mut() {
+            if item.status == DownloadStatus::Queued || item.status == DownloadStatus::Downloading {
+                item.status = DownloadStatus::Cancelled;
+                count += 1;
+            }
+        }
+    }
+    save_queue(&app, &sq);
+    Ok(count)
+}
+
+#[tauri::command]
+pub async fn retry_download(
+    app: AppHandle,
+    queue: State<'_, SharedQueue>,
+    active: State<'_, ActiveProcesses>,
+    id: String,
+) -> Result<DownloadItem, String> {
+    let existing = {
+        let q = queue.lock().map_err(|e| e.to_string())?;
+        q.get(&id).cloned()
+    };
+    let item = existing.ok_or_else(|| "Download item not found".to_string())?;
+
+    let req = DownloadRequest {
+        url: item.url.clone(),
+        format_id: item.format_id.clone(),
+        filename: item.title.clone(),
+        output_dir: item.output_path.clone(),
+        start_time: None,
+        end_time: None,
+        premiere_mode: false,
+        download_type: if item.download_type == "Audio" { DownloadType::Audio } else { DownloadType::Video },
+        video_title: item.title.clone(),
+        channel: item.channel.clone(),
+        duration: item.duration,
+        thumbnail_url: item.thumbnail_url.clone(),
+        has_audio: item.has_audio,
+        encoding: item.ext.clone(),
+    };
+
+    enqueue_download(app, queue, active, req).await
+}
+
+fn pause_internal(app: &AppHandle, active: &ActiveProcesses, queue: &SharedQueue, id: &str) {
+    let sq = queue.clone();
+    {
+        let mut procs = active.lock().unwrap();
+        if let Some(child) = procs.remove(id) {
+            let _ = child.kill();
+        }
+    }
+    {
+        let mut q = queue.lock().unwrap();
+        q.update(id, |item| {
+            item.status = DownloadStatus::Paused;
+        });
+    }
+    save_queue(app, &sq);
+    emit_progress(app, id, 0.0, "", "", "Paused");
+    emit_item_update(app, queue, id);
+}
+
+fn resume_internal(app: &AppHandle, queue: &SharedQueue, active: &ActiveProcesses, id: &str) {
+    let item = {
+        let q = queue.lock().unwrap();
+        q.get(id).cloned()
+    };
+    if let Some(item) = item {
+        let id = id.to_string();
+        let req = DownloadRequest {
+            url: item.url.clone(),
+            format_id: item.format_id.clone(),
+            filename: item.title.clone(),
+            output_dir: item.output_path.clone(),
+            start_time: None,
+            end_time: None,
+            premiere_mode: false,
+            download_type: if item.download_type == "Audio" { DownloadType::Audio } else { DownloadType::Video },
+            video_title: item.title.clone(),
+            channel: item.channel.clone(),
+            duration: item.duration,
+            thumbnail_url: item.thumbnail_url.clone(),
+            has_audio: item.has_audio,
+            encoding: item.ext.clone(),
+        };
+        let app = app.clone();
+        let q = queue.clone();
+        let a = active.clone();
+        tauri::async_runtime::spawn(async move {
+            process_download(app, q, a, req, id).await;
+        });
+    }
+}
+
+#[tauri::command]
+pub async fn pause_download(
+    app: AppHandle,
+    active: State<'_, ActiveProcesses>,
+    queue: State<'_, SharedQueue>,
+    id: String,
+) -> Result<bool, String> {
+    pause_internal(&app, active.inner(), queue.inner(), &id);
+    Ok(true)
+}
+
+#[tauri::command]
+pub async fn resume_download(
+    app: AppHandle,
+    queue: State<'_, SharedQueue>,
+    active: State<'_, ActiveProcesses>,
+    id: String,
+) -> Result<bool, String> {
+    resume_internal(&app, queue.inner(), active.inner(), &id);
+    Ok(true)
+}
+
+#[tauri::command]
+pub async fn pause_all_downloads(
+    app: AppHandle,
+    active: State<'_, ActiveProcesses>,
+    queue: State<'_, SharedQueue>,
+) -> Result<u32, String> {
+    let ids: Vec<String> = {
+        let q = queue.lock().map_err(|e| e.to_string())?;
+        q.items.iter()
+            .filter(|i| i.status == DownloadStatus::Downloading)
+            .map(|i| i.id.clone())
+            .collect()
+    };
+    for id in &ids {
+        pause_internal(&app, active.inner(), queue.inner(), id);
+    }
+    let count_paused = {
+        let mut q = queue.lock().map_err(|e| e.to_string())?;
+        let mut c = 0u32;
+        for item in q.items.iter_mut() {
+            if item.status == DownloadStatus::Queued {
+                item.status = DownloadStatus::Paused;
+                c += 1;
+            }
+        }
+        c + ids.len() as u32
+    };
+    save_queue(&app, queue.inner());
+    Ok(count_paused)
+}
+
+#[tauri::command]
+pub async fn resume_all_downloads(
+    app: AppHandle,
+    queue: State<'_, SharedQueue>,
+    active: State<'_, ActiveProcesses>,
+) -> Result<u32, String> {
+    let ids: Vec<String> = {
+        let q = queue.lock().map_err(|e| e.to_string())?;
+        q.items.iter()
+            .filter(|i| i.status == DownloadStatus::Paused)
+            .map(|i| i.id.clone())
+            .collect()
+    };
+    let count = ids.len() as u32;
+    for id in &ids {
+        resume_internal(&app, queue.inner(), active.inner(), id);
+    }
+    Ok(count)
 }
 
 #[tauri::command]
