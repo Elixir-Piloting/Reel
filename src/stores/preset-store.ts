@@ -9,7 +9,7 @@ export interface Preset {
   premiereMode: boolean;
 }
 
-const STORAGE_KEY = 'ytmate-presets';
+const STORAGE_KEY = 'reel-presets';
 
 const defaultPreset: Preset = {
   id: 'premiere-pro',

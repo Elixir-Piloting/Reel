@@ -12,7 +12,7 @@ fn log_file() -> &'static Mutex<Option<std::fs::File>> {
 pub fn init(app_data_dir: PathBuf) {
     let log_dir = app_data_dir.join("logs");
     fs::create_dir_all(&log_dir).ok();
-    let path = log_dir.join("ytmate.log");
+    let path = log_dir.join("reel.log");
     let file = OpenOptions::new().create(true).append(true).open(path).ok();
     *log_file().lock().unwrap() = file;
     log_info("Logging initialized");

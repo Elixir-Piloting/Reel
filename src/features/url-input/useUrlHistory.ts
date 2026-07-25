@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-const STORAGE_KEY = 'ytmate-url-history';
+const STORAGE_KEY = 'reel-url-history';
 const MAX_HISTORY = 20;
 
 export interface UrlHistoryEntry {

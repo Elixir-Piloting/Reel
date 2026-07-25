@@ -9,13 +9,13 @@ interface ThemeStore {
 
 function loadTheme(): Theme {
   if (typeof window === "undefined") return "system";
-  return (localStorage.getItem("ytmate-theme") as Theme) ?? "system";
+  return (localStorage.getItem("reel-theme") as Theme) ?? "system";
 }
 
 export const useThemeStore = create<ThemeStore>((set) => ({
   theme: loadTheme(),
   setTheme: (t) => {
-    localStorage.setItem("ytmate-theme", t);
+    localStorage.setItem("reel-theme", t);
     set({ theme: t });
   },
 }));
