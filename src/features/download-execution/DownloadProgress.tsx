@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { X, FolderOpen, XCircle } from "lucide-react";
 import { CheckCircleIcon } from "@phosphor-icons/react";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
@@ -27,9 +28,10 @@ function PieProgress({ percent, size = 28 }: { percent: number; size?: number })
 
 interface Props {
   big?: boolean;
+  retry?: () => void;
 }
 
-export function DownloadProgress({ big }: Props) {
+export function DownloadProgress({ big, retry }: Props) {
   const downloadItem = useDownloadExecutionStore((s) => s.downloadItem);
   const downloadProgress = useDownloadExecutionStore((s) => s.downloadProgress);
   const downloadStatus = useDownloadExecutionStore((s) => s.downloadStatus);
@@ -37,8 +39,27 @@ export function DownloadProgress({ big }: Props) {
   const cancelDownload = useDownloadExecutionStore((s) => s.cancelDownload);
   const completedFileName = useDownloadExecutionStore((s) => s.completedFileName);
 
+  const [stuck, setStuck] = useState(false);
+
+  useEffect(() => {
+    if (!downloadItem && isDownloading) {
+      const timer = setTimeout(() => setStuck(true), 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setStuck(false);
+    }
+  }, [downloadItem, isDownloading]);
+
   if (!downloadItem && !isDownloading) return null;
   if (!downloadItem) {
+    if (stuck) {
+      return (
+        <div className="p-4 text-center">
+          <p className="text-sm text-destructive">Download may have failed to start</p>
+          {retry && <button onClick={retry} className="text-sm text-primary underline mt-1">Retry</button>}
+        </div>
+      );
+    }
     return (
       <div className="flex items-center gap-3">
         <PieProgress percent={0} size={28} />

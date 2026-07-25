@@ -47,6 +47,9 @@ class DataService {
   async resumeAllDownloads(): Promise<number> {
     return invoke<number>('resume_all_downloads');
   }
+  async verifyOutputDir(path: string): Promise<boolean> {
+    return invoke('verify_output_dir', { path });
+  }
   async updateYtdlp(): Promise<string> {
     return invoke<string>('update_ytdlp');
   }

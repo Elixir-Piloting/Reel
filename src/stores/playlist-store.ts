@@ -18,6 +18,7 @@ interface PlaylistState {
   setEntries: (entries: PlaylistEntry[]) => void;
   toggleEntry: (idx: number) => void;
   toggleSelectAll: () => void;
+  setItemDownloadId: (idx: number, downloadId: string) => void;
   setItemProgress: (idx: number, progress: PlaylistItemProgress) => void;
   resetPlaylist: () => void;
 }
@@ -28,6 +29,8 @@ interface PlaylistEntry {
   duration: number;
   thumbnail: string;
   url: string;
+  channel?: string;
+  downloadId?: string;
 }
 
 const initialState = {
@@ -62,6 +65,14 @@ export const usePlaylistStore = create<PlaylistState>()(
     }));
   },
 
+  setItemDownloadId: (idx: number, downloadId: string) => set((state) => {
+    const entries = [...state.entries];
+    if (entries[idx]) {
+      entries[idx] = { ...entries[idx], downloadId };
+    }
+    return { entries };
+  }),
+
   setItemProgress: (idx, progress) =>
     set((s) => ({
       itemProgress: { ...s.itemProgress, [idx]: progress },
@@ -71,7 +82,7 @@ export const usePlaylistStore = create<PlaylistState>()(
 }),
 {
   name: 'playlist-store',
-  storage: createJSONStorage(() => sessionStorage),
+    storage: createJSONStorage(() => localStorage),
   partialize: (state) => ({
     entries: state.entries,
     selectedIndices: state.selectedIndices,

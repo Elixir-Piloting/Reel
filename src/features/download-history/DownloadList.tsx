@@ -32,7 +32,7 @@ interface Props {
 }
 
 function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: () => void }) {
-  const st = typeof item.status === 'string' ? item.status : '';
+  const st = item.status;
   const downloading = ['Downloading', 'Merging', 'Converting'].includes(st);
   const queued = st === 'Queued';
   const paused = st === 'Paused';
@@ -40,6 +40,7 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
   const cancelled = st === 'Cancelled';
   const failed = st === 'Failed';
   const terminal = completed || cancelled || failed;
+  const isConverting = st === 'Converting';
 
   return (
     <div className={`flex items-start gap-3 p-3 rounded-lg bg-elevated shadow-card ${terminal ? 'opacity-60' : ''}`}>
@@ -66,7 +67,16 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
             <XCircle className="w-4 h-4 text-destructive shrink-0" />
           )}
           {failed && (
-            <span className="text-xs text-destructive">Failed</span>
+            <div>
+              <span className="text-xs text-destructive">Failed</span>
+              {(item.error?.includes('Sidecar') || item.error?.includes('sidecar')) && (
+                <div className="mt-2 p-2 border border-destructive/30 bg-destructive/10 rounded text-center">
+                  <p className="text-xs font-medium">yt-dlp binary not found</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">The download tool is missing.</p>
+                  <button onClick={() => dataService.updateYtdlp()} className="text-[10px] text-primary underline mt-1">Download yt-dlp</button>
+                </div>
+              )}
+            </div>
           )}
           {paused && (
             <Pause className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -88,7 +98,7 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        {(downloading || queued) && (
+        {(downloading || queued) && !isConverting && (
           <>
             <button
               onClick={() => dataService.pauseDownload(item.id).then(onRefresh)}
@@ -162,20 +172,16 @@ export function DownloadList({ items, onRefresh, searchQuery }: Props) {
     : items;
 
   const downloading = filtered.filter((i) => {
-    const s = typeof i.status === 'string' ? i.status : '';
-    return ['Downloading', 'Merging', 'Converting'].includes(s);
+    return ['Downloading', 'Merging', 'Converting'].includes(i.status);
   });
   const queuedItems = filtered.filter((i) => {
-    const s = typeof i.status === 'string' ? i.status : '';
-    return s === 'Queued';
+    return i.status === 'Queued';
   });
   const pausedItems = filtered.filter((i) => {
-    const s = typeof i.status === 'string' ? i.status : '';
-    return s === 'Paused';
+    return i.status === 'Paused';
   });
   const downloaded = filtered.filter((i) => {
-    const s = typeof i.status === 'string' ? i.status : '';
-    return ['Completed', 'Failed', 'Cancelled'].includes(s);
+    return ['Completed', 'Failed', 'Cancelled'].includes(i.status);
   });
 
   return (

@@ -28,6 +28,7 @@ export interface FormatInfo {
   container: string;
   fps: number | null;
   filesize: number | null;
+  filesize_estimated: boolean;
 }
 
 export interface DownloadRequest {
@@ -45,6 +46,7 @@ export interface DownloadRequest {
   thumbnail_url: string;
   has_audio: boolean;
   encoding: string;
+  filename_pattern?: string;
 }
 
 export interface DownloadItem {
@@ -56,7 +58,8 @@ export interface DownloadItem {
   progress: number;
   speed: string;
   eta: string;
-  status: string | Record<string, string>;
+  status: string;
+  error?: string;
   channel: string;
   duration: number;
   thumbnail_url: string;
@@ -72,6 +75,7 @@ export interface AppSettings {
   auto_convert_premiere: boolean;
   show_all_formats: boolean;
   max_concurrent_downloads: number;
+  filename_pattern?: string;
 }
 
 export interface QualityOption {

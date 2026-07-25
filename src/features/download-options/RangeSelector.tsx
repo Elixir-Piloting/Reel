@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@base-ui/react/slider";
@@ -13,15 +13,13 @@ export function RangeSelector() {
   const setEndTime = useOptionsStore((s) => s.setEndTime);
   const metadata = useAnalysisStore((s) => s.metadata);
   const maxTime = metadata?.duration || 0;
-  const prevMax = useRef(0);
 
   useEffect(() => {
-    if (maxTime > 0 && maxTime !== prevMax.current) {
-      prevMax.current = maxTime;
-      if (endTime <= 0 || endTime > maxTime) setEndTime(maxTime);
-      if (startTime < 0 || startTime >= maxTime) setStartTime(0);
+    if (metadata) {
+      setStartTime(0);
+      setEndTime(metadata.duration || 0);
     }
-  }, [maxTime]);
+  }, [metadata?.webpage_url]);
 
   const handleValueChange = useCallback(
     (value: number | readonly number[]) => {

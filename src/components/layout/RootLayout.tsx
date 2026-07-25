@@ -38,8 +38,7 @@ export function RootLayout() {
       try {
         const q = await dataService.getQueue();
         const active = q.filter((i: any) => {
-          const s = typeof i.status === 'string' ? i.status : '';
-          return ['Queued', 'Downloading', 'Merging', 'Converting', 'Paused'].includes(s);
+          return ['Queued', 'Downloading', 'Merging', 'Converting', 'Paused'].includes(i.status);
         });
         setActiveCount(active.length);
         if (active.length === 0 && useDownloadExecutionStore.getState().isDownloading) {

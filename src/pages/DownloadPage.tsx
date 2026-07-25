@@ -7,10 +7,11 @@ import { UrlInput } from "@/features/url-input";
 import { VideoInfo } from "@/features/video-info";
 import { DownloadTypeSelector, QualitySelector, RangeSelector, EncodingSelector, DestinationSelector } from "@/features/download-options";
 import { PlaylistSelector } from "@/features/playlist";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, RotateCcw } from "lucide-react";
 import { formatDuration, formatDate } from "@/lib/utils";
+import { dataService } from "@/shared/lib/data-service";
 
 function AnimatedSection({ show, children }: { show: boolean; children: React.ReactNode }) {
   return (
@@ -39,9 +40,17 @@ export function DownloadPage() {
 
   const qualityOptions = useAnalysisStore((s) => s.qualityOptions);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const [dirExists, setDirExists] = useState(true);
   const isPlaylistDownload = Object.keys(itemProgress).length > 0;
   const effectiveDir = outputDir || settings.default_download_folder || '';
-  const canDownload = phase === "ready" && !!effectiveDir && !!selectedQuality && !isDownloading;
+  const hasFormats = qualityOptions.length > 0;
+  const canDownload = phase === "ready" && !!effectiveDir && dirExists && !!selectedQuality && !isDownloading;
+
+  useEffect(() => {
+    if (effectiveDir) {
+      dataService.verifyOutputDir(effectiveDir).then(setDirExists);
+    }
+  }, [effectiveDir]);
   const selectedOpt = qualityOptions.find(o => o.label === selectedQuality);
   const sizeMatch = selectedOpt?.label.match(/\(([^)]+)\)/);
   const sizeStr = sizeMatch ? sizeMatch[1] : '';
@@ -88,6 +97,17 @@ export function DownloadPage() {
       <AnimatedSection show={phase === "playlist" || (isPlaylistDownload && (phase === "downloading" || phase === "completed"))}>
         {(phase === "playlist" || (isPlaylistDownload && (phase === "downloading" || phase === "completed"))) && (
           <PlaylistSelector />
+        )}
+      </AnimatedSection>
+
+      <AnimatedSection show={phase === "ready"}>
+        {phase === "ready" && !hasFormats && (
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-4">
+            <p className="text-sm font-medium text-yellow-600 dark:text-yellow-400">No downloadable formats found</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              This video may be a livestream, members-only, or geo-blocked. Try a different URL.
+            </p>
+          </div>
         )}
       </AnimatedSection>
 

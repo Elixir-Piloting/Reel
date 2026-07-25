@@ -11,10 +11,12 @@ pub fn parse_progress(line: &str) -> Option<ProgressInfo> {
         return None;
     }
 
-    // Extract percentage: [download]   0.0%
+    // Extract percentage: [download]   0.0% or 0,0%
     let percent = {
-        let re = Regex::new(r"\[download\]\s+(\d+\.?\d*)%").ok()?;
-        re.captures(line)?.get(1)?.as_str().parse().unwrap_or(0.0)
+        let re = Regex::new(r"\[download\]\s+(\d+[.,]?\d*)%").ok()?;
+        re.captures(line)?.get(1)?.as_str()
+            .replace(',', ".")
+            .parse().unwrap_or(0.0)
     };
 
     // Extract speed: "at  X.XXKiB/s" or "at  X.XXMiB/s"

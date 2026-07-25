@@ -9,17 +9,30 @@ import { usePlaylistStore } from './playlist-store';
 import { useSettingsStore } from './settings-store';
 import { notify } from '../features/notifications/notificationService';
 import { Deferred } from '../shared/lib/deferred';
+import type { FormatInfo } from '../shared/lib/types';
+
+function qualityTierFromFormatId(formatId: string, formats: FormatInfo[]): string {
+  const fmt = formats.find(f => f.format_id === formatId);
+  if (fmt) {
+    const height = parseInt(fmt.resolution.split('x')[1] || fmt.resolution.replace(/\D/g, ''), 10);
+    if (height > 0) {
+      return `bestvideo[height<=${height}]+bestaudio/best`;
+    }
+  }
+  return 'best';
+}
 
 interface DownloadItem {
   id: string;
   url: string;
   title: string;
-  status: string | Record<string, string>;
+  status: string;
   progress: number;
   speed: string;
   eta: string;
   output_path: string;
   filename: string;
+  error?: string;
 }
 
 interface DownloadExecutionState {
@@ -37,6 +50,7 @@ interface DownloadExecutionState {
   cancelDownload: () => Promise<void>;
   reset: () => void;
   initProgressListener: () => Promise<() => void>;
+  unlistenRef: (() => void) | null;
 }
 
 export const useDownloadExecutionStore = create<DownloadExecutionState>()(
@@ -49,6 +63,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
   downloadStatus: '',
   downloadItem: null,
   completedFileName: null,
+  unlistenRef: null,
 
   setDownloading: (v) => set({ isDownloading: v }),
 
@@ -114,9 +129,11 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
       let cancelled = false;
       setItemProgress(idx, { status: 'downloading', progress: 0, speed: '', eta: '' });
       try {
+        const formats = useAnalysisStore.getState().formats;
+        const formatArg = qualityTierFromFormatId(format_id, formats);
         const item = await dataService.enqueueDownload({
           url: entry.url,
-          format_id,
+          format_id: formatArg,
           filename: entry.title,
           output_dir: effectiveDir,
           start_time: null,
@@ -124,43 +141,67 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
           premiere_mode: premiereMode,
           download_type: downloadType === 'video' ? 'Video' : 'Audio',
           video_title: entry.title,
-          channel: '',
+          channel: entry.channel || '',
           duration: entry.duration || 0,
-          thumbnail_url: entry.thumbnail,
+          thumbnail_url: entry.thumbnail || '',
           has_audio: downloadType === 'video',
           encoding,
         });
 
+        usePlaylistStore.getState().setItemDownloadId(idx, item.id);
+
         const deferred = new Deferred<void>();
+        const DOWNLOAD_TIMEOUT = 5 * 60 * 1000;
+        const STALL_TIMEOUT = 60 * 1000;
+
+        let lastProgressTime = Date.now();
+        let lastProgressValue = 0;
+        let finalItem: any = null;
+
         const unsubItem = await listen<any>('download-item-update', (e) => {
-          const st = typeof e.payload.status === 'string' ? e.payload.status : '';
-          if (e.payload.id === item.id && ['Completed', 'Failed', 'Cancelled'].includes(st)) {
-            deferred.resolve();
+          if (e.payload.id === item.id) {
+            finalItem = e.payload;
+            const st = typeof e.payload.status === 'string' ? e.payload.status : '';
+            if (['Completed', 'Failed', 'Cancelled'].includes(st)) {
+              deferred.resolve();
+            }
           }
         });
         const unsubProgress = await listen<any>('download-progress', (e) => {
           if (e.payload.id === item.id && e.payload.progress !== undefined && !cancelled) {
             setItemProgress(idx, { status: 'downloading', progress: e.payload.progress, speed: e.payload.speed || '', eta: e.payload.eta || '' });
+            if (e.payload.progress > lastProgressValue) {
+              lastProgressTime = Date.now();
+              lastProgressValue = e.payload.progress;
+            }
           }
         });
 
         const timeout = new Promise<void>((_, reject) =>
-          setTimeout(() => reject(new Error('Download timed out after 30 minutes')), 1_800_000),
+          setTimeout(() => reject(new Error('Download timed out')), DOWNLOAD_TIMEOUT),
         );
-        await Promise.race([deferred.promise, timeout]);
+
+        const stallDetector = (async () => {
+          while (true) {
+            await new Promise(r => setTimeout(r, STALL_TIMEOUT));
+            if (Date.now() - lastProgressTime >= STALL_TIMEOUT && lastProgressValue > 0) {
+              throw new Error('Download stalled');
+            }
+          }
+        })();
+
+        await Promise.race([deferred.promise, timeout, stallDetector]);
         cancelled = true;
         unsubItem();
         unsubProgress();
 
-        const qItems = await dataService.getQueue();
-        const finalItem = qItems.find((i: any) => i.id === item.id);
         const finalStatusStr = typeof finalItem?.status === 'string' ? finalItem.status : '';
         const finalStatus = finalStatusStr === 'Completed' ? 'completed' : finalStatusStr === 'Cancelled' ? 'cancelled' : 'failed';
         setItemProgress(idx, { status: finalStatus, progress: finalStatus === 'completed' ? 100 : 0, speed: '', eta: '' });
       } catch (e) {
         cancelled = true;
         const msg = String(e);
-        setItemProgress(idx, { status: msg.includes('timed out') ? 'failed' : 'failed', progress: 0, speed: '', eta: '', error: msg });
+        setItemProgress(idx, { status: msg.includes('timed out') || msg.includes('stalled') ? 'failed' : 'failed', progress: 0, speed: '', eta: '', error: msg });
       }
     };
 
@@ -173,6 +214,8 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
     };
     const workers = Array.from({ length: Math.min(concurrency, indices.length) }, () => next());
     await Promise.all(workers);
+
+    await new Promise(resolve => setTimeout(resolve, 500));
 
     set({ isDownloading: false });
     useAnalysisStore.getState().setPhase('completed');
@@ -201,6 +244,12 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
   }),
 
   initProgressListener: async () => {
+    if (get().unlistenRef) {
+      try { get().unlistenRef!(); } catch (e) {
+        logger.warn('Failed to unregister stale listener', { error: e });
+      }
+      get().unlistenRef = null;
+    }
     let rafId: number | null = null;
     let pending: Partial<DownloadExecutionState> = {};
 
@@ -239,7 +288,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
       if (!currentItem || event.payload.id !== currentItem.id) return;
       const prev = currentItem;
       const payload = event.payload;
-      const statusStr = typeof payload.status === 'string' ? payload.status : Object.keys(payload.status as Record<string, string>)[0] || 'Unknown';
+      const statusStr = String(payload.status ?? 'Unknown');
       const isDone = ['Completed', 'Failed', 'Cancelled'].includes(statusStr);
       if (get().downloadStatus === 'Cancelled' && !isDone) return;
       set({
@@ -262,19 +311,22 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
         notify.downloadComplete(title, () => dataService.openInExplorer(payload.output_path));
       } else if (statusStr === 'Failed' && (!prev || prev.status !== 'Failed')) {
         const title = payload.title || get().downloadItem?.title || '';
-        const errMsg = typeof payload.status === 'object' ? Object.values(payload.status as Record<string, string>)[0] : payload.status;
+        const errMsg = (payload as any).error || payload.status;
         notify.downloadFailed(title, String(errMsg || 'Unknown error'), () => get().startDownload());
       }
     });
-    return () => {
+    const cleanup = () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
       unlistenProgress();
       unlistenItem();
+      set({ unlistenRef: null });
     };
+    set({ unlistenRef: cleanup });
+    return cleanup;
   }}),
   {
     name: 'download-execution',
-    storage: createJSONStorage(() => sessionStorage),
+    storage: createJSONStorage(() => localStorage),
     partialize: (state) => ({
       isDownloading: state.isDownloading,
       downloadProgress: state.downloadProgress,

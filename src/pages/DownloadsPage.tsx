@@ -6,32 +6,38 @@ import { DownloadList } from "@/features/download-history/DownloadList";
 import { Button } from "@/components/ui/button";
 import type { DownloadItem } from "@/shared/lib/types";
 
-export function DownloadsPage() {
-  const [items, setItems] = useState<DownloadItem[]>([]);
-  const [search, setSearch] = useState("");
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+function useQueuePolling(intervalMs = 2000) {
+  const [queue, setQueue] = useState<DownloadItem[]>([]);
+  const hasActive = queue.some(item =>
+    item.status === 'Downloading' || item.status === 'Queued'
+  );
 
-  const fetchHistory = async () => {
+  const refresh = async () => {
     try {
-      const queue = await dataService.getQueue();
-      setItems(queue.reverse());
+      const items = await dataService.getQueue();
+      setQueue(items.reverse());
     } catch { /* ignore */ }
   };
 
   useEffect(() => {
-    fetchHistory();
-    intervalRef.current = setInterval(fetchHistory, 2000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, []);
+    refresh();
+    const id = setInterval(refresh, hasActive ? 2000 : 30_000);
+    return () => clearInterval(id);
+  }, [hasActive]);
+
+  return { queue, refresh };
+}
+
+export function DownloadsPage() {
+  const [search, setSearch] = useState("");
+  const { queue: items, refresh } = useQueuePolling(2000);
 
   const activeCount = items.filter((i) => {
-    const s = typeof i.status === 'string' ? i.status : '';
-    return ['Queued', 'Downloading', 'Merging', 'Converting'].includes(s);
+    return ['Queued', 'Downloading', 'Merging', 'Converting'].includes(i.status);
   }).length;
 
   const pausedCount = items.filter((i) => {
-    const s = typeof i.status === 'string' ? i.status : '';
-    return s === 'Paused';
+    return i.status === 'Paused';
   }).length;
 
   return (
@@ -50,7 +56,7 @@ export function DownloadsPage() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={async () => { await dataService.pauseAllDownloads(); fetchHistory(); }}
+            onClick={async () => { await dataService.pauseAllDownloads(); refresh(); }}
             className="h-9 gap-1.5"
           >
             <Pause className="w-4 h-4" />
@@ -61,7 +67,7 @@ export function DownloadsPage() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={async () => { await dataService.resumeAllDownloads(); fetchHistory(); }}
+            onClick={async () => { await dataService.resumeAllDownloads(); refresh(); }}
             className="h-9 gap-1.5"
           >
             <Play className="w-4 h-4" />
@@ -72,7 +78,7 @@ export function DownloadsPage() {
           <Button
             variant="secondary"
             size="sm"
-            onClick={async () => { await dataService.cancelAllDownloads(); fetchHistory(); }}
+            onClick={async () => { await dataService.cancelAllDownloads(); refresh(); }}
             className="h-9 gap-1.5"
           >
             <Ban className="w-4 h-4" />
@@ -80,7 +86,7 @@ export function DownloadsPage() {
           </Button>
         )}
       </div>
-      <DownloadList items={items} onRefresh={fetchHistory} searchQuery={search} />
+      <DownloadList items={items} onRefresh={refresh} searchQuery={search} />
     </div>
   );
 }

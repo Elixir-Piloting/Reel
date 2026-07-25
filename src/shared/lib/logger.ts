@@ -3,11 +3,16 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 const isDev = import.meta.env.DEV;
 
 function log(level: LogLevel, msg: string, meta?: Record<string, unknown>) {
-  if (!isDev && level === 'debug') return;
   const prefix = `[${new Date().toISOString()}] [${level.toUpperCase()}]`;
   const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
   if (meta) fn(`${prefix} ${msg}`, meta);
   else fn(`${prefix} ${msg}`);
+
+  if (level === 'debug') {
+    import('@tauri-apps/api/core').then(({ invoke }) => {
+      invoke('log_to_file', { level, message: `${prefix} ${msg}`, meta: meta ? JSON.stringify(meta) : '' });
+    }).catch(() => {});
+  }
 }
 
 export const logger = {

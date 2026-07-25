@@ -6,6 +6,7 @@ import { logger } from '../shared/lib/logger';
 import { notify } from '../features/notifications/notificationService';
 import { usePlaylistStore } from './playlist-store';
 import { useOptionsStore } from './options-store';
+import { useSettingsStore } from './settings-store';
 import { getCachedAnalysis, setCachedAnalysis } from '../shared/lib/analysis-cache';
 
 export type Phase = 'idle' | 'analyzing' | 'ready' | 'playlist' | 'downloading' | 'completed' | 'error';
@@ -109,22 +110,38 @@ export const useAnalysisStore = create<AnalysisState>()(
       }
     } catch (e) {
       if (gen !== analyzeGen) return;
-      set({ phase: 'error', error: String(e) });
+      set({ phase: 'error', error: String(e), metadata: null, formats: [], qualityOptions: [] });
     }
   },
 
   buildQualityOptions: (formats: FormatInfo[]) => {
     const downloadType = useOptionsStore.getState().downloadType;
+    const showAll = useSettingsStore.getState().settings.show_all_formats;
     const bestLabel = 'Best';
     const bestValue = downloadType === 'audio' ? 'bestaudio/best' : 'bestvideo+bestaudio/best';
     const opts: { value: string; label: string }[] = [{ value: bestValue, label: bestLabel }];
+
     const filtered = formats.filter(f => {
       if (downloadType === 'video') {
-        const hasVideo = f.video_codec && f.video_codec !== 'none' && f.video_codec !== '';
-        return hasVideo;
+        return f.video_codec && f.video_codec !== 'none' && f.video_codec !== '';
       }
       return f.audio_codec && f.audio_codec !== 'none' && f.audio_codec !== '';
     });
+
+    if (showAll) {
+      const all = filtered.map(f => ({
+        value: f.format_id,
+        label: `${f.resolution || 'audio'} — ${f.video_codec || f.audio_codec || ''}${f.filesize ? ` (${(f.filesize / 1024 / 1024).toFixed(1)}MB)` : ''}`,
+      }));
+      const arr = [...opts, ...all];
+      set({ qualityOptions: arr });
+      const current = useOptionsStore.getState().selectedQuality;
+      if ((!current || current === 'best') && arr.length > 0) {
+        useOptionsStore.getState().setSelectedQuality(arr[0].value);
+      }
+      return;
+    }
+
     const grouped = new Map<string, { value: string; label: string }>();
     for (const f of filtered) {
       const h = parseInt(
@@ -142,7 +159,7 @@ export const useAnalysisStore = create<AnalysisState>()(
     set({ qualityOptions: arr });
     const current = useOptionsStore.getState().selectedQuality;
     if ((!current || current === 'best') && arr.length > 0) {
-      useOptionsStore.getState().setSelectedQuality(arr[0].label);
+      useOptionsStore.getState().setSelectedQuality(arr[0].value);
     }
   },
 
@@ -153,7 +170,7 @@ export const useAnalysisStore = create<AnalysisState>()(
 }),
   {
     name: 'analysis-store',
-    storage: createJSONStorage(() => sessionStorage),
+    storage: createJSONStorage(() => localStorage),
     partialize: (state) => ({
       url: state.url,
       metadata: state.metadata,

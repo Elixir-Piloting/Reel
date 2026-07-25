@@ -9,6 +9,10 @@ export function TitleBar() {
 
   useEffect(() => {
     appWindow.isMaximized().then(setMaximized);
+    const unlisten = appWindow.onResized(() => {
+      appWindow.isMaximized().then(setMaximized);
+    });
+    return () => { unlisten.then(fn => fn()); };
   }, []);
 
   return (

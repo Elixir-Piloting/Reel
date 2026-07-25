@@ -38,10 +38,12 @@ pub fn run() {
             commands::download::get_queue,
             commands::download::remove_from_queue,
             commands::download::open_in_explorer,
+            commands::download::verify_output_dir,
             commands::settings::get_settings,
             commands::settings::save_settings,
             commands::browse::browse_folder,
             commands::update::update_ytdlp,
+            logging::log_to_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

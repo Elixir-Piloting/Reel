@@ -28,7 +28,7 @@ impl DownloadQueue {
     }
 
     pub fn next_queued(&self) -> Option<usize> {
-        self.items.iter().position(|i| i.status == crate::models::DownloadStatus::Queued)
+        self.items.iter().position(|i| i.status == "Queued")
     }
 
     pub fn get(&self, id: &str) -> Option<&DownloadItem> {

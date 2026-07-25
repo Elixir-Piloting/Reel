@@ -149,7 +149,7 @@ export function PlaylistSelector() {
                 {isDownloaded && status === "downloading" && (
                   <div className="shrink-0">
                     <button
-                      onClick={(e) => { e.stopPropagation(); dataService.cancelDownload(entry.id); }}
+                      onClick={(e) => { e.stopPropagation(); entry.downloadId && dataService.cancelDownload(entry.downloadId); }}
                       className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-7 w-7 text-muted-foreground transition-colors"
                       title="Cancel"
                     >

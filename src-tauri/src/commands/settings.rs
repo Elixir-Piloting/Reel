@@ -11,7 +11,13 @@ fn settings_path(app: &AppHandle) -> std::path::PathBuf {
 pub fn get_settings(app: AppHandle) -> AppSettings {
     let path = settings_path(&app);
     if let Ok(data) = std::fs::read_to_string(&path) {
-        serde_json::from_str(&data).unwrap_or_default()
+        match serde_json::from_str::<AppSettings>(&data) {
+            Ok(s) => s,
+            Err(e) => {
+                crate::logging::log_info(&format!("[get_settings] Failed to parse settings.json: {}. Using defaults.", e));
+                AppSettings::default()
+            }
+        }
     } else {
         AppSettings::default()
     }

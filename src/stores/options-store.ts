@@ -52,7 +52,7 @@ export const useOptionsStore = create<OptionsState>()(
 }),
 {
   name: 'options-store',
-  storage: createJSONStorage(() => sessionStorage),
+    storage: createJSONStorage(() => localStorage),
   partialize: (state) => ({
     downloadType: state.downloadType,
     selectedQuality: state.selectedQuality,

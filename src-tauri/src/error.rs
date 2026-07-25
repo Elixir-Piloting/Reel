@@ -15,6 +15,14 @@ pub enum AppError {
     NetworkError(String),
     #[error("Storage error: {0}")]
     StorageError(String),
+    #[error("Invalid URL: {0}")]
+    InvalidUrl(String),
+    #[error("Invalid UTF-8 in yt-dlp output: {0}")]
+    InvalidUtf8(String),
     #[error("Cancelled")]
     Cancelled,
+    #[error("Missing required field in yt-dlp response: {0}")]
+    MissingField(String),
+    #[error("The playlist is empty")]
+    EmptyPlaylist,
 }

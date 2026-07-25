@@ -35,6 +35,7 @@ pub struct FormatInfo {
     pub container: String,
     pub fps: Option<f64>,
     pub filesize: Option<u64>,
+    pub filesize_estimated: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,6 +54,9 @@ pub struct DownloadRequest {
     pub thumbnail_url: String,
     pub has_audio: bool,
     pub encoding: String,
+    pub filename_pattern: Option<String>,
+    #[serde(default)]
+    pub continue_mode: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -71,7 +75,8 @@ pub struct DownloadItem {
     pub progress: f64,
     pub speed: String,
     pub eta: String,
-    pub status: DownloadStatus,
+    pub status: String,
+    pub error: Option<String>,
     pub channel: String,
     pub duration: f64,
     pub thumbnail_url: String,
@@ -79,18 +84,6 @@ pub struct DownloadItem {
     pub format_id: String,
     pub download_type: String,
     pub has_audio: bool,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub enum DownloadStatus {
-    Queued,
-    Downloading,
-    Merging,
-    Converting,
-    Completed,
-    Failed(String),
-    Cancelled,
-    Paused,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,6 +102,7 @@ pub struct AppSettings {
     pub auto_convert_premiere: bool,
     pub show_all_formats: bool,
     pub max_concurrent_downloads: u32,
+    pub filename_pattern: Option<String>,
 }
 
 pub fn resolve_filename_conflict(dir: &str, base_name: &str, ext: &str) -> String {
@@ -137,6 +131,7 @@ impl Default for AppSettings {
             auto_convert_premiere: false,
             show_all_formats: false,
             max_concurrent_downloads: 3,
+            filename_pattern: None,
         }
     }
 }
