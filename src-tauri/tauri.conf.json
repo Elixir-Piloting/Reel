@@ -25,9 +25,17 @@
       "csp": "default-src 'self'; img-src 'self' https:; style-src 'self' 'unsafe-inline';"
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZEMEI3RkExOTU3NzM5NDcKUldSSE9YZVZvWDhMYllpaFdGcmYzWnJ5YWh0bC9yY2NUS0hLOGFhS05PSDdvTHpYUktrak41b3UK",
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": "nsis",
     "externalBin": ["binaries/yt-dlp", "binaries/ffmpeg"],
     "icon": [
       "icons/32x32.png",
