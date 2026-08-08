@@ -31,6 +31,25 @@ interface AnalysisState {
 
 let analyzeGen = 0;
 
+function toErrorMessage(e: unknown): string {
+  if (typeof e === 'string') return e;
+  if (e instanceof Error && e.message) return e.message;
+  if (e && typeof e === 'object') {
+    const obj = e as Record<string, unknown>;
+    for (const key of ['message', 'error', 'ErrorMessage']) {
+      const v = obj[key];
+      if (typeof v === 'string' && v) return v;
+    }
+    try {
+      const s = JSON.stringify(e);
+      if (s && s !== '{}') return s;
+    } catch {
+      /* ignore */
+    }
+  }
+  return String(e);
+}
+
 export const useAnalysisStore = create<AnalysisState>()(
   persist(
     (set, get) => ({
@@ -110,7 +129,7 @@ export const useAnalysisStore = create<AnalysisState>()(
       }
     } catch (e) {
       if (gen !== analyzeGen) return;
-      set({ phase: 'error', error: String(e), metadata: null, formats: [], qualityOptions: [] });
+      set({ phase: 'error', error: toErrorMessage(e), metadata: null, formats: [], qualityOptions: [] });
     }
   },
 

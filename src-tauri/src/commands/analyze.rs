@@ -63,18 +63,22 @@ fn determine_container(ext: &str, video_codec: &str, _audio_codec: &str) -> Stri
 fn parse_video_meta(json: &serde_json::Value, url: &str) -> Result<VideoMeta, AppError> {
     let title = json["title"]
         .as_str()
-        .ok_or_else(|| AppError::MissingField("title".into()))?
-        .to_string();
-    let duration = json["duration"]
-        .as_f64()
-        .ok_or(AppError::MissingField("duration".into()))?;
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| {
+            json["id"].as_str().unwrap_or("Unknown title").to_string()
+        });
+    let duration = parse_duration(json);
     let webpage_url = json["webpage_url"]
         .as_str()
-        .ok_or_else(|| AppError::MissingField("webpage_url".into()))?
+        .filter(|s| !s.is_empty())
+        .unwrap_or(url)
         .to_string();
 
     let channel = json["channel"].as_str()
-        .or_else(|| json["uploader"].as_str())
+        .filter(|s| !s.is_empty())
+        .or_else(|| json["uploader"].as_str().filter(|s| !s.is_empty()))
+        .or_else(|| json["uploader_id"].as_str().filter(|s| !s.is_empty()))
         .unwrap_or("Unknown")
         .to_string();
     let upload_date = json["upload_date"].as_str().unwrap_or("").to_string();
@@ -92,6 +96,47 @@ fn parse_video_meta(json: &serde_json::Value, url: &str) -> Result<VideoMeta, Ap
         playlist_id: None,
         playlist_count: None,
     })
+}
+
+fn parse_duration(json: &serde_json::Value) -> f64 {
+    if let Some(d) = json["duration"].as_f64() {
+        if d > 0.0 {
+            return d;
+        }
+    }
+    if let Some(d) = json["duration_string"]
+        .as_str()
+        .and_then(|s| parse_duration_string(s))
+    {
+        if d > 0.0 {
+            return d;
+        }
+    }
+    json["formats"]
+        .as_array()
+        .and_then(|formats| {
+            formats
+                .iter()
+                .filter(|f| f["vcodec"].as_str().map(|c| c != "none").unwrap_or(false))
+                .filter_map(|f| f["duration"].as_f64().or_else(|| f["tbr"].as_f64()))
+                .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+        })
+        .unwrap_or(0.0)
+}
+
+fn parse_duration_string(s: &str) -> Option<f64> {
+    let s = s.trim();
+    if s.is_empty() {
+        return None;
+    }
+    let parts: Vec<&str> = s.split(':').collect();
+    let parts: Vec<f64> = parts.iter().map(|p| p.parse::<f64>().ok()).collect::<Option<Vec<_>>>()?;
+    match parts.len() {
+        1 => Some(parts[0]),
+        2 => Some(parts[0] * 60.0 + parts[1]),
+        3 => Some(parts[0] * 3600.0 + parts[1] * 60.0 + parts[2]),
+        _ => None,
+    }
 }
 
 fn normalize_resolution(note: &str) -> Option<u32> {
@@ -163,7 +208,7 @@ fn parse_formats(json: &serde_json::Value) -> Vec<FormatInfo> {
         } else {
             let estimated_size = (|| {
                 let tbr = fmt["tbr"].as_f64().or_else(|| fmt["vbr"].as_f64())?;
-                let duration = json["duration"].as_f64()?;
+                let duration = parse_duration(json);
                 if tbr > 0.0 && duration > 0.0 {
                     Some((tbr * duration / 8.0) as u64)
                 } else {
@@ -233,35 +278,35 @@ fn parse_playlist_entries(json: &serde_json::Value) -> Vec<PlaylistEntry> {
 }
 
 #[tauri::command]
-pub async fn analyze_video(app: AppHandle, url: String) -> Result<AnalyzeResponse, AppError> {
-    validate_url(&url).map_err(AppError::InvalidUrl)?;
+pub async fn analyze_video(app: AppHandle, url: String) -> Result<AnalyzeResponse, String> {
+    validate_url(&url).map_err(|e| e)?;
 
     let sidecar = app.shell()
         .sidecar("yt-dlp")
-        .map_err(|e| AppError::SidecarNotFound(e.to_string()))?;
+        .map_err(|e| AppError::SidecarNotFound(e.to_string()).to_string())?;
 
     let output = sidecar
         .args(["-J", "--no-download", "--flat-playlist", &url])
         .output()
         .await
-        .map_err(|e| AppError::YtDlpError(e.to_string()))?;
+        .map_err(|e| AppError::YtDlpError(e.to_string()).to_string())?;
 
     if !output.status.success() {
         let stderr = String::from_utf8(output.stderr)
-            .map_err(|e| AppError::InvalidUtf8(e.to_string()))?;
-        return Err(AppError::YtDlpError(stderr));
+            .map_err(|e| AppError::InvalidUtf8(e.to_string()).to_string())?;
+        return Err(AppError::YtDlpError(stderr).to_string());
     }
 
     let stdout = String::from_utf8(output.stdout)
-        .map_err(|e| AppError::InvalidUtf8(e.to_string()))?;
+        .map_err(|e| AppError::InvalidUtf8(e.to_string()).to_string())?;
     let json: serde_json::Value = serde_json::from_str(&stdout)
-        .map_err(|e| AppError::YtDlpError(e.to_string()))?;
+        .map_err(|e| AppError::YtDlpError(e.to_string()).to_string())?;
 
     // Check if this is a playlist by looking for entries array
     let entries = json["entries"].as_array();
     if let Some(e) = &entries {
         if e.is_empty() {
-            return Err(AppError::EmptyPlaylist);
+            return Err(AppError::EmptyPlaylist.to_string());
         }
     }
     let is_playlist = entries.map(|e| e.len() >= 1).unwrap_or(false);
@@ -279,7 +324,8 @@ pub async fn analyze_video(app: AppHandle, url: String) -> Result<AnalyzeRespons
         })
     } else {
         // Single video — the full JSON already has formats
-        let video_meta = parse_video_meta(&json, &url)?;
+        let video_meta = parse_video_meta(&json, &url)
+            .map_err(|e| e.to_string())?;
         let formats = parse_formats(&json);
 
         Ok(AnalyzeResponse {
@@ -289,5 +335,93 @@ pub async fn analyze_video(app: AppHandle, url: String) -> Result<AnalyzeRespons
             playlist_title: None,
             playlist_entries: None,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn json(s: &str) -> serde_json::Value {
+        serde_json::from_str(s).unwrap()
+    }
+
+    #[test]
+    fn parse_video_meta_missing_duration_defaults_to_zero() {
+        let data: serde_json::Value = json(r#"{
+            "title": "Video by malaika.schools",
+            "webpage_url": "https://www.instagram.com/reel/abc/",
+            "channel": "malaika.schools"
+        }"#);
+        let meta = parse_video_meta(&data, "https://www.instagram.com/reel/abc/").unwrap();
+        assert_eq!(meta.title, "Video by malaika.schools");
+        assert_eq!(meta.duration, 0.0);
+        assert_eq!(meta.webpage_url, "https://www.instagram.com/reel/abc/");
+    }
+
+    #[test]
+    fn parse_video_meta_uses_duration_string_fallback() {
+        let data: serde_json::Value = json(r#"{
+            "title": "Some clip",
+            "webpage_url": "https://site.com/v",
+            "duration_string": "1:30"
+        }"#);
+        let meta = parse_video_meta(&data, "https://site.com/v").unwrap();
+        assert!((meta.duration - 90.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn parse_video_meta_missing_title_falls_back_to_id() {
+        let data: serde_json::Value = json(r#"{
+            "id": "Dbn8WRaomUo",
+            "webpage_url": "https://site.com/v"
+        }"#);
+        let meta = parse_video_meta(&data, "https://site.com/v").unwrap();
+        assert_eq!(meta.title, "Dbn8WRaomUo");
+    }
+
+    #[test]
+    fn parse_video_meta_missing_webpage_url_falls_back_to_input() {
+        let data: serde_json::Value = json(r#"{ "title": "Clip" }"#);
+        let meta = parse_video_meta(&data, "https://foo.example/watch").unwrap();
+        assert_eq!(meta.webpage_url, "https://foo.example/watch");
+    }
+
+    #[test]
+    fn parse_video_meta_full_fields_preserved() {
+        let data: serde_json::Value = json(r#"{
+            "title": "Tutorial",
+            "duration": 123.5,
+            "webpage_url": "https://youtube.com/watch?v=x",
+            "channel": "Creator",
+            "upload_date": "20240101",
+            "thumbnail": "https://img/x.jpg"
+        }"#);
+        let meta = parse_video_meta(&data, "https://youtu.be/x").unwrap();
+        assert_eq!(meta.title, "Tutorial");
+        assert_eq!(meta.duration, 123.5);
+        assert_eq!(meta.channel, "Creator");
+        assert_eq!(meta.upload_date, "20240101");
+        assert_eq!(meta.thumbnail_url, "https://img/x.jpg");
+    }
+
+    #[test]
+    fn parse_formats_without_duration_does_not_crash() {
+        let data: serde_json::Value = json(r#"{
+            "title": "Clip",
+            "formats": [
+                {"format_id": "1", "ext": "mp4", "vcodec": "h264", "acodec": "none", "tbr": 100}
+            ]
+        }"#);
+        let formats = parse_formats(&data);
+        assert_eq!(formats.len(), 1);
+        assert_eq!(formats[0].filesize_estimated, true);
+    }
+
+    #[test]
+    fn parse_duration_string_supports_hh_mm_ss() {
+        assert!((parse_duration_string("45").unwrap() - 45.0).abs() < 0.001);
+        assert!((parse_duration_string("1:30").unwrap() - 90.0).abs() < 0.001);
+        assert!((parse_duration_string("1:02:03").unwrap() - 3723.0).abs() < 0.001);
     }
 }
