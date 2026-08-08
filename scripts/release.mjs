@@ -166,10 +166,15 @@ function publishToReleases(version, { dir, exe, sig }) {
   };
   const content = Buffer.from(JSON.stringify(manifest)).toString("base64");
   // Overwriting an existing file requires its current SHA (contents API).
-  const existing = runOk(
+  // Only trust the .sha when the request succeeds: a 404 also prints a JSON
+  // error body to stdout, so gate on the exit code rather than the content.
+  const existingRes = spawnSync(
     `${ghAuth()} api /repos/${RELEASE_REPO}/contents/update.json -q .sha`,
+    { cwd: ROOT, encoding: "utf8", shell: true },
   );
-  const shaArg = existing && existing !== "404" ? ` -f sha="${existing.trim()}"` : "";
+  const existing =
+    existingRes.status === 0 ? (existingRes.stdout || "").trim() : "";
+  const shaArg = existing ? ` -f sha="${existing}"` : "";
   run(
     `${ghAuth()} api -X PUT /repos/${RELEASE_REPO}/contents/update.json ` +
       `-f message="Update manifest for v${version}" -f content="${content}"${shaArg}`,
