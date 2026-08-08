@@ -101,7 +101,7 @@ only the updater-compatible installer is produced.
 
 ## Decisions
 
-- **Approach A (Tauri updater + same-repo release commcmd)** chosen: copy the
+- **Approach A (Tauri updater + same-repo release command)** chosen: copy the
   proven clippy `scripts/release.mjs` flow but target the source repo, not a
   separate release repo. `gh` handles auth via its own keyring.
 - **Local release only, no CI** — matches clippy's shipped state; the command
