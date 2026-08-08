@@ -1,4 +1,7 @@
 import { Sun, Moon, Monitor } from "lucide-react";
+import { useEffect, useState } from "react";
+import { emit } from "@tauri-apps/api/event";
+import { getVersion } from "@tauri-apps/api/app";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useThemeStore, type Theme } from "@/stores/theme-store";
 import { SettingsCard } from "@/components/ui/settings-card";
@@ -95,7 +98,104 @@ export function SettingsPage() {
           <p className="text-caption text-muted-foreground">Supported: {'{title}'}, {'{channel}'}, {'{date}'}, {'{id}'}</p>
         </div>
       </SettingsCard>
+
+      <UpdatesCard />
     </div>
+  );
+}
+
+function UpdatesCard() {
+  const [installed, setInstalled] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "checking" | "available" | "current">("idle");
+  const [latest, setLatest] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (import.meta.env.DEV) return;
+    getVersion()
+      .then(setInstalled)
+      .catch(() => setInstalled(null));
+  }, []);
+
+  useEffect(() => {
+    if (import.meta.env.DEV) return;
+    setStatus("checking");
+    void (async () => {
+      try {
+        const { check } = await import("@tauri-apps/plugin-updater");
+        const update = await check();
+        if (update) {
+          setLatest(update.version);
+          setStatus("available");
+        } else {
+          setStatus("current");
+        }
+      } catch {
+        setStatus("idle");
+      }
+    })();
+  }, []);
+
+  const scan = async () => {
+    if (import.meta.env.DEV) return;
+    setStatus("checking");
+    try {
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const update = await check();
+      if (update) {
+        setLatest(update.version);
+        setStatus("available");
+      } else {
+        setStatus("current");
+      }
+    } catch {
+      setStatus("idle");
+    }
+  };
+
+  const install = async () => {
+    if (import.meta.env.DEV) return;
+    setBusy(true);
+    try {
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const update = await check();
+      if (update) {
+        await update.downloadAndInstall();
+        emit("app:restart");
+      } else {
+        setStatus("current");
+      }
+    } catch {
+      setStatus("idle");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <SettingsCard title="Version & Updates">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-y-0.5">
+          <span className="text-sm font-medium">Reel v{installed ?? "…"}</span>
+          <span className="text-xs text-muted-foreground">
+            {status === "checking" && "Checking for updates…"}
+            {status === "available" && `Update available: v${latest}`}
+            {status === "current" && "Up to date"}
+            {status === "idle" && "Version info unavailable"}
+          </span>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={scan} disabled={busy}>
+            Check again
+          </Button>
+          {status === "available" && (
+            <Button onClick={install} disabled={busy}>
+              Restart & install
+            </Button>
+          )}
+        </div>
+      </div>
+    </SettingsCard>
   );
 }
 
