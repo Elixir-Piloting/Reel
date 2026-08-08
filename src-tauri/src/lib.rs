@@ -6,6 +6,7 @@ mod queue;
 
 use std::sync::{Arc, Mutex};
 
+use tauri::Listener;
 use queue::SharedQueue;
 use commands::download::ActiveProcesses;
 
@@ -19,10 +20,19 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(queue.clone())
         .manage(active_processes)
         .setup(move |app| {
             commands::download::load_saved_queue(&app.handle(), &queue);
+
+            // Restart request from the frontend after an update installs.
+            let app_handle = app.handle().clone();
+            let restart_handle = app_handle.clone();
+            app_handle.listen("app:restart", move |_| {
+                let _ = restart_handle.restart();
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
