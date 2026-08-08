@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# Local release secrets (never commit)
+.release-secrets.json
+minisign-private.key
+minisign-private.key.pub
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
