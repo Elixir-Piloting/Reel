@@ -1,13 +1,16 @@
 import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { ArrowLeft, ArrowRight, ArrowSquareOut } from "@phosphor-icons/react";
+import { ArrowLeft, ArrowRight } from "@phosphor-icons/react";
 
 const PROMOS_URL =
   "https://raw.githubusercontent.com/Elixir-Piloting/Reel/master/promos.json";
 const ADVANCE_MS = 6000;
 
+type PromoType = "image" | "video";
+
 type Promo = {
-  image_url?: string;
+  type?: PromoType;
+  media_url?: string;
   title: string;
   body?: string;
   link: string;
@@ -30,7 +33,7 @@ export function PromoCarousel() {
     const controller = new AbortController();
     (async () => {
       try {
-        const res = await fetch(PROMOS_URL, { signal: controller.signal });
+        const res = await fetch(PROMOS_URL, { cache: "no-store", signal: controller.signal });
         if (!res.ok) return;
         const data: unknown = await res.json();
         const active = Array.isArray(data)
@@ -48,12 +51,13 @@ export function PromoCarousel() {
 
   const count = promos.length;
   const promo = promos[index] ?? promos[0];
+  const isVideo = promo?.type === "video";
 
   useEffect(() => {
-    if (hidden || count < 2 || paused) return;
+    if (hidden || count < 2 || paused || isVideo) return;
     const id = setInterval(() => setIndex((i) => (i + 1) % count), ADVANCE_MS);
     return () => clearInterval(id);
-  }, [hidden, count, paused, index]);
+  }, [hidden, count, paused, index, isVideo]);
 
   if (hidden || !promo) return null;
 
@@ -66,38 +70,56 @@ export function PromoCarousel() {
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => openUrl(promo.link).catch(() => {})}
-        className="group relative flex aspect-[4/3] w-full flex-col justify-end overflow-hidden rounded-lg border-2 border-background bg-surface text-left transition-all hover:shadow-soft cursor-pointer"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openUrl(promo.link).catch(() => {});
+          }
+        }}
+        className="group w-full cursor-pointer overflow-hidden rounded-md border-4 border-background bg-surface text-left transition-all hover:shadow-soft"
         title={promo.title}
       >
-        {promo.image_url && (
-          <img
-            src={promo.image_url}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
+        {isVideo ? (
+          <video
+            key={promo.media_url}
+            src={promo.media_url}
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            onEnded={() => setIndex((i) => (i + 1) % count)}
+            onError={() => {
+              if (count > 1) setIndex((i) => (i + 1) % count);
             }}
+            className="aspect-[4/3] w-full rounded-md object-cover"
           />
+        ) : (
+          promo.media_url && (
+            <img
+              src={promo.media_url}
+              alt=""
+              className="aspect-[4/3] w-full rounded-md object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          )
         )}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 inset-highlight bg-gradient-to-t from-surface to-transparent"
-        />
-        <span className="relative flex flex-col gap-0.5 p-3">
-          <span className="flex items-center gap-1 text-sm font-semibold text-foreground">
+        <div className="mt-2 px-3 pb-3">
+          <span className="block text-sm font-semibold text-foreground">
             {promo.title}
-            <ArrowSquareOut className="size-3.5 text-muted-foreground transition-colors group-hover:text-accent" weight="bold" />
           </span>
           {promo.body && (
-            <span className="text-xs leading-normal text-muted-foreground">
+            <span className="mt-0.5 block text-xs leading-normal text-muted-foreground">
               {promo.body}
             </span>
           )}
-        </span>
-      </button>
+        </div>
+      </div>
 
       {count > 1 && (
         <div className="flex items-center justify-between px-1">

@@ -14,15 +14,15 @@
 - JSON contract (exact shape, top-level array):
   ```json
   [
-    { "image_url": "https://...", "title": "...", "body": "...", "link": "https://...", "active": true }
+    { "type": "image", "media_url": "https://...", "title": "...", "body": "...", "link": "https://...", "active": true }
   ]
   ```
-  Only entries with `active !== false` are rendered. `image_url` and `body` are optional; `title` and `link` are required.
+  Only entries with `active !== false` are rendered. `media_url`/`body`/`type` are optional; `title` and `link` are required. `type` is `"image"` (default) or `"video"`; both use the single `media_url` field — `"video"` entries autoplay muted (no controls), advancing on `ended`, while `"image"` entries wait 6s.
 - Carousel: one card at a time; auto-advance every 6s; pause on hover; dot indicators + prev/next arrows; a single active promo renders as a static card with no controls.
-- Card layout: aspect ratio 4:3, full-bleed. The image covers the whole card (`absolute inset-0 object-cover`); a gradient overlay (`bg-gradient-to-t from-surface to-transparent`) with `inset-highlight` sits over it; the card keeps `border-2 border-background`; title + body sit at the bottom over the surface-tinted gradient. If the image fails to load, it is hidden and the card shows `bg-surface` with the text.
+- Card layout: a `div` with `border-4 border-background rounded-md` and `bg-surface`. The media (image or video, `w-full aspect-[4/3] rounded-md object-cover`) is at the top; a text `div` (`mt-2 px-3 pb-3`) below holds the title (text-sm, semibold) and body (text-xs, muted). No gradient overlay, no external-link icon. The whole card is clickable. On media failure the image is hidden or the video skipped. The feed fetch uses `cache: "no-store"`.
 - Whole card is clickable → `openUrl(promo.link)` from `@tauri-apps/plugin-opener`.
 - On fetch failure, invalid JSON, or zero active promos the section renders `null` (hidden entirely — no placeholder, no toast).
-- CSP: add `connect-src https:` to the existing CSP in `src-tauri/tauri.conf.json`. No other capabilities/permissions change.
+- CSP: add `connect-src https:` (fetch) and `media-src https:` (video promos) to the existing CSP in `src-tauri/tauri.conf.json`. No other capabilities/permissions change.
 - No new dependencies.
 - No test framework is configured in this repo. Verification is via `npx tsc --noEmit`, `npm run build`, and manual checks in `npm run tauri dev`.
 
@@ -43,7 +43,8 @@ Create `promos.json` at the repo root:
 ```json
 [
   {
-    "image_url": "https://yoursite.com/promos/murmur.png",
+    "type": "image",
+    "media_url": "https://yoursite.com/promos/murmur.png",
     "title": "Try Murmur",
     "body": "Hands-free voice dictation for Windows.",
     "link": "https://murmur.freyo.app",
@@ -60,7 +61,7 @@ Run:
 Get-Content promos.json -Raw | ConvertFrom-Json
 ```
 
-Expected: an array with one object (`image_url`, `title`, `body`, `link`, `active`) — no parse error.
+Expected: an array with one object (`type`, `media_url`, `title`, `body`, `link`, `active`) — no parse error.
 
 - [ ] **Step 3: Commit and push to master**
 

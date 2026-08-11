@@ -16,7 +16,8 @@ New file at repo root: `promos.json`. Top-level array of promo objects:
 ```json
 [
   {
-    "image_url": "https://yoursite.com/promos/murmur.png",
+    "type": "image",
+    "media_url": "https://yoursite.com/promos/murmur.png",
     "title": "Try Murmur",
     "body": "Hands-free voice dictation for Windows.",
     "link": "https://murmur.freyo.app",
@@ -25,7 +26,11 @@ New file at repo root: `promos.json`. Top-level array of promo objects:
 ]
 ```
 
-- `image_url` — banner image (must be `https:`; CSP allows `img-src https:`).
+- `type` — `"image"` (default when missing) or `"video"`. Controls how
+  `media_url` is rendered.
+- `media_url` — the media asset for the card: an image when `type` is
+  `"image"`, a video when `type` is `"video"` (must be `https:`; CSP allows
+  `img-src https:` and `media-src https:`).
 - `title` — short card title.
 - `body` — one-line description.
 - `link` — destination URL opened in the default browser.
@@ -36,7 +41,8 @@ Only promos with `active === true` are rendered.
 ## Fetching
 
 - Source URL: `https://raw.githubusercontent.com/Elixir-Piloting/Reel/master/promos.json`
-- Fetched once when the layout mounts (fresh each app launch; no cache layer).
+- Fetched once when the layout mounts; request uses `cache: "no-store"` so a
+  launch always gets the latest feed (no stale 5-minute HTTP cache).
 - Invalid JSON, fetch failure, or zero active promos → the section is hidden
   entirely. No error toast, no placeholder, no dead space.
 
@@ -51,16 +57,18 @@ Implementation:
 - Fetch promos on mount; filter `active === true`.
 - Render a single card at a time.
 - Auto-advance every ~6s; pause while the pointer is over the carousel.
+- Video promos (`type: "video"`) do NOT wait 6s — a mute-d, control-less
+  `<video>` autoplays (playsInline, muted) and advances to the next promo on
+  `ended`/`onError`. Image promos keep the 6s timer.
 - Dot indicators + prev/next arrow buttons for manual navigation. A single
   promo renders as a static card with no controls.
-- Card layout: aspect ratio 4:3, full-bleed — the image covers the entire
-  card (`absolute inset-0 object-cover`). A gradient overlay (`bg-gradient-to-t
-  from-surface to-transparent`) sits over the image with `inset-highlight`
-  applied to it; the card keeps the `border-2 border-background` clay border.
-  Title and body text sit at the bottom over the surface-tinted gradient, with
-  a subtle external-link affordance. The entire card is clickable. If the
-  image fails to load it is hidden and the card falls back to the plain
-  `bg-surface` with text.
+- Card layout: a plain `div` with `border-4 border-background rounded-md` and
+  `bg-surface`. The media (image or video, `w-full aspect-[4/3] rounded-md
+  object-cover`) sits above the text block; below it a text `div`
+  (`mt-2 px-3 pb-3`) holds the title and one-line body. No gradient overlay
+  and no external-link icon. The entire card is clickable (a `div` with
+  `role="button"`) and opens the link; if the media fails to load it is hidden
+  (images) or skipped (videos) and the card shows just the text.
 - Click → `openUrl(promo.link)` from `@tauri-apps/plugin-opener` (already an
   installed dependency with `opener:default` permission).
 
@@ -74,7 +82,8 @@ tokens required.
 ## Config changes
 
 - `src-tauri/tauri.conf.json` CSP: add `connect-src https:` so the webview can
-  `fetch()` the raw URL. `img-src 'self' https:` already permits remote images.
+  `fetch()` the raw URL, and `media-src https:` so video promos can play.
+  `img-src 'self' https:` already permits remote images.
 - No capability/permission changes needed (`opener:default` already present).
 
 ## Out of scope

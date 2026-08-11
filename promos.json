@@ -1,20 +1,23 @@
 [
   {
-    "image_url": "https://ik.imagekit.io/fdvspuunj/templates/iphone%2016.png",
+    "type": "image",
+    "media_url": "https://ik.imagekit.io/fdvspuunj/templates/iphone%2016.png",
     "title": "Try Murmur",
     "body": "Hands-free voice dictation for Windows.",
     "link": "https://murmur.freyo.app",
     "active": true
   },
   {
-    "image_url": "https://ik.imagekit.io/fdvspuunj/templates/iphone%2016.png",
+    "type": "image",
+    "media_url": "https://ik.imagekit.io/fdvspuunj/templates/iphone%2016.png",
     "title": "Try Murmur",
     "body": "Hands-free voice dictation for Windows.",
     "link": "https://murmur.freyo.app",
     "active": true
   },
   {
-    "image_url": "https://ik.imagekit.io/fdvspuunj/templates/iphone%2016.png",
+    "type": "image",
+    "media_url": "https://ik.imagekit.io/fdvspuunj/templates/iphone%2016.png",
     "title": "Try Murmur",
     "body": "Hands-free voice dictation for Windows.",
     "link": "https://murmur.freyo.app",
