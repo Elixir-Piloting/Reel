@@ -281,11 +281,9 @@ fn parse_playlist_entries(json: &serde_json::Value) -> Vec<PlaylistEntry> {
 pub async fn analyze_video(app: AppHandle, url: String) -> Result<AnalyzeResponse, String> {
     validate_url(&url).map_err(|e| e)?;
 
-    let sidecar = app.shell()
-        .sidecar("yt-dlp")
-        .map_err(|e| AppError::SidecarNotFound(e.to_string()).to_string())?;
-
-    let output = sidecar
+    let output = app
+        .shell()
+        .command(crate::binaries::ytdlp_path(&app))
         .args(["-J", "--no-download", "--flat-playlist", &url])
         .output()
         .await

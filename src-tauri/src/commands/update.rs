@@ -1,4 +1,4 @@
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use crate::error::AppError;
 
 async fn fetch_latest_release() -> Result<(String, String, Option<String>), AppError> {
@@ -51,12 +51,8 @@ pub async fn update_ytdlp(app: AppHandle) -> Result<String, AppError> {
         }
     }
 
-    let resource_dir = app.path().resource_dir()
-        .map_err(|e| AppError::StorageError(e.to_string()))?;
-
-    let binaries_dir = resource_dir.join("binaries");
-    let _ = std::fs::create_dir_all(&binaries_dir);
-    let target_path = binaries_dir.join("yt-dlp-x86_64-pc-windows-msvc.exe");
+    let _ = crate::binaries::ensure_bootstrapped(&app);
+    let target_path = crate::binaries::ytdlp_path(&app);
 
     // Atomic replace with temp file
     let tmp_path = target_path.with_extension("exe.tmp");

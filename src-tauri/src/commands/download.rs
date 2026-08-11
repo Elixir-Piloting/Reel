@@ -421,6 +421,9 @@ pub(crate) async fn process_download(
                     args.push("--postprocessor-args".to_string());
                     args.push("ffmpeg:-c:v libx265 -pix_fmt yuv420p".to_string());
                 }
+                let ffmpeg_abs = crate::binaries::bin_dir(&app).join(crate::binaries::FFMPEG_BIN);
+                args.push("--ffmpeg-location".to_string());
+                args.push(ffmpeg_abs.to_string_lossy().into_owned());
             }
             DownloadType::Audio => {
                 args.push("-f".to_string());
@@ -490,7 +493,7 @@ pub(crate) async fn process_download(
         let url = request.url.clone();
         args.push(url);
 
-        crate::logging::log_info(&format!("[process_download] Spawning yt-dlp sidecar with {} args", args.len()));
+        crate::logging::log_info(&format!("[process_download] Spawning yt-dlp with {} args", args.len()));
         for (i, arg) in args.iter().enumerate() {
             crate::logging::log_info(&format!("[process_download]   arg[{}] = {:?}", i, arg));
         }
@@ -500,32 +503,20 @@ pub(crate) async fn process_download(
             // Basic check: disk has space (we don't know file size in advance)
         }
 
-        let (mut rx, child) = match app.shell().sidecar("yt-dlp") {
-            Ok(cmd) => match cmd.args(&args).spawn() {
-                Ok(pair) => {
-                    crate::logging::log_info("[process_download] yt-dlp process spawned OK");
-                    pair
-                },
-                Err(e) => {
-                    crate::logging::log_error(&format!("[process_download] ERROR spawning yt-dlp: {}", e));
-                    crate::logging::log_info("[process_download] will retry after spawn error");
-                    continue 'retry;
-                }
+        let (mut rx, child) = match app
+            .shell()
+            .command(crate::binaries::ytdlp_path(&app))
+            .args(&args)
+            .spawn()
+        {
+            Ok(pair) => {
+                crate::logging::log_info("[process_download] yt-dlp process spawned OK");
+                pair
             },
             Err(e) => {
-                let msg = format!("Sidecar not found: {}", e);
-                crate::logging::log_error(&format!("[process_download] ERROR sidecar not found: {}", e));
-                let mut q = lock_mutex(&queue);
-                let already_cancelled = q.items.iter().any(|i| i.id == id && i.status == "Cancelled");
-                if already_cancelled {
-                    return;
-                }
-                q.update(&id, |item| {
-                    item.status = "Failed".to_string();
-                    item.error = Some(msg.clone());
-                });
-                emit_progress(&app, &id, 0.0, "", "", &msg);
-                return;
+                crate::logging::log_error(&format!("[process_download] ERROR spawning yt-dlp: {}", e));
+                crate::logging::log_info("[process_download] will retry after spawn error");
+                continue 'retry;
             }
         };
 
@@ -647,31 +638,24 @@ pub(crate) async fn process_download(
                                     let _ = std::fs::remove_file(&temp_path_clone);
                                 }
 
-                                let (mut conv_rx, _conv_child) = match app.shell().sidecar("ffmpeg") {
-                                    Ok(cmd) => match cmd.args([
+                                let (mut conv_rx, _conv_child) = match app
+                                    .shell()
+                                    .command(crate::binaries::ffmpeg_path(&app))
+                                    .args([
                                         "-i", &input_path,
                                         "-c:v", "libx264",
                                         "-pix_fmt", "yuv420p",
                                         "-c:a", "aac",
                                         "-y", &temp_path,
-                                    ]).spawn() {
-                                        Ok(pair) => pair,
-                                        Err(e) => {
-                                            emit_item_update(&app, &queue, &id);
-                                            lock_mutex(&queue).update(&id, |item| {
-                                                item.status = "Failed".to_string();
-                                                item.error = Some(format!("FFmpeg spawn error: {}", e));
-                                            });
-                                            save_queue(&app, &queue);
-                                            emit_progress(&app, &id, 0.0, "", "", &format!("Failed: FFmpeg error: {}", e));
-                                            return;
-                                        }
-                                    },
+                                    ])
+                                    .spawn()
+                                {
+                                    Ok(pair) => pair,
                                     Err(e) => {
                                         emit_item_update(&app, &queue, &id);
                                         lock_mutex(&queue).update(&id, |item| {
                                             item.status = "Failed".to_string();
-                                            item.error = Some(format!("FFmpeg sidecar error: {}", e));
+                                            item.error = Some(format!("FFmpeg spawn error: {}", e));
                                         });
                                         save_queue(&app, &queue);
                                         emit_progress(&app, &id, 0.0, "", "", &format!("Failed: FFmpeg error: {}", e));

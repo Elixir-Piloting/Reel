@@ -69,10 +69,10 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
           {failed && (
             <div>
               <span className="text-xs text-destructive">Failed</span>
-              {(item.error?.includes('Sidecar') || item.error?.includes('sidecar')) && (
+              {(item.error?.toLowerCase().includes('yt-dlp')) && (
                 <div className="mt-2 p-2 border border-destructive/30 bg-destructive/10 rounded text-center">
-                  <p className="text-xs font-medium">yt-dlp binary not found</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">The download tool is missing.</p>
+                  <p className="text-xs font-medium">yt-dlp unavailable</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">The download tool is missing or was not set up.</p>
                   <button onClick={() => dataService.updateYtdlp()} className="text-[10px] text-primary underline mt-1">Download yt-dlp</button>
                 </div>
               )}

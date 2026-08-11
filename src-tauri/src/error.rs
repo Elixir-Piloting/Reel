@@ -3,8 +3,6 @@ use thiserror::Error;
 
 #[derive(Debug, Error, Serialize)]
 pub enum AppError {
-    #[error("yt-dlp sidecar not found: {0}")]
-    SidecarNotFound(String),
     #[error("yt-dlp returned an error: {0}")]
     YtDlpError(String),
     #[error("Download failed after {0} attempts: {1}")]
