@@ -55,7 +55,6 @@ export function SettingsPage() {
       <SettingsCard title="Download Defaults">
         <div className="space-y-3">
           <ToggleSetting checked={settings.auto_update_ytdlp} onChange={(v) => updateSettings({ auto_update_ytdlp: v })} label="Auto-update yt-dlp on launch" />
-          <ToggleSetting checked={settings.auto_convert_premiere} onChange={(v) => updateSettings({ auto_convert_premiere: v })} label="Auto-convert to Premiere-compatible" />
           <ToggleSetting checked={settings.show_all_formats} onChange={(v) => updateSettings({ show_all_formats: v })} label="Show all formats (not just best per quality)" />
           <div className="border-t border-border pt-3">
             <div className="flex items-center justify-between">

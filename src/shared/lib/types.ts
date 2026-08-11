@@ -72,7 +72,6 @@ export interface DownloadItem {
 export interface AppSettings {
   default_download_folder: string;
   auto_update_ytdlp: boolean;
-  auto_convert_premiere: boolean;
   show_all_formats: boolean;
   max_concurrent_downloads: number;
   filename_pattern?: string;

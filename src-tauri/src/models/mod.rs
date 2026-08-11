@@ -99,7 +99,6 @@ pub struct AnalyzeResponse {
 pub struct AppSettings {
     pub default_download_folder: String,
     pub auto_update_ytdlp: bool,
-    pub auto_convert_premiere: bool,
     pub show_all_formats: bool,
     pub max_concurrent_downloads: u32,
     pub filename_pattern: Option<String>,
@@ -128,7 +127,6 @@ impl Default for AppSettings {
                 .to_string_lossy()
                 .to_string(),
             auto_update_ytdlp: true,
-            auto_convert_premiere: false,
             show_all_formats: false,
             max_concurrent_downloads: 3,
             filename_pattern: None,

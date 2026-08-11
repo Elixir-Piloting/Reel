@@ -5,7 +5,7 @@ import { usePlaylistStore } from "@/stores/playlist-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { UrlInput } from "@/features/url-input";
 import { VideoInfo } from "@/features/video-info";
-import { DownloadTypeSelector, QualitySelector, RangeSelector, EncodingSelector, DestinationSelector } from "@/features/download-options";
+import { DownloadTypeSelector, QualitySelector, RangeSelector, EncodingSelector, PremiereSelector, DestinationSelector } from "@/features/download-options";
 import { PlaylistSelector } from "@/features/playlist";
 import { DownloadProgress } from "@/features/download-execution";
 import { useState, useEffect } from "react";
@@ -90,6 +90,7 @@ export function DownloadPage() {
                 <DownloadTypeSelector />
                 <QualitySelector />
                 <EncodingSelector />
+                <PremiereSelector />
               </div>
             </div>
             <DestinationSelector />
