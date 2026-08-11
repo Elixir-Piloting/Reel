@@ -74,21 +74,21 @@ export function RootLayout() {
         <TitleBar />
 
         <div className="flex flex-1 min-h-0">
-          <aside className="w-14 shrink-0 flex flex-col items-center gap-2">
+          <aside className="w-16 shrink-0 flex flex-col items-center gap-2 pt-1">
             {navItems.map((item) => (
               <button
                 key={item.label}
                 onClick={item.action}
-                className={`relative flex items-center justify-center w-9 h-9 rounded-lg transition-colors ${
+                className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 border-background transition-all ${
                   item.active
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-accent text-accent-foreground inset-highlight"
+                    : "bg-surface text-muted-foreground inset-highlight hover:bg-surface-overlay hover:text-foreground"
                 }`}
                 title={item.label}
               >
                 {item.icon}
                 {item.badge != null && (
-                  <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-accent text-[10px] font-bold text-accent-foreground border-2 border-background">
                     {item.badge}
                   </span>
                 )}
@@ -96,8 +96,8 @@ export function RootLayout() {
             ))}
           </aside>
 
-          <div className="flex-1 flex flex-col min-w-0 mr-2 mb-2">
-            <div className="flex-1 rounded-lg border overflow-y-auto flex flex-col">
+          <div className="flex-1 flex flex-col min-w-0 mr-3 mb-2">
+            <div className="flex-1 rounded-xl border-2 border-background bg-surface clay-sunken overflow-y-auto">
               <div className="flex-1 w-full max-w-4xl mx-auto px-6 pb-8 pt-6">
                 <Outlet />
               </div>

@@ -34,7 +34,7 @@ export function PlaylistSelector() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-lg border bg-card p-4 space-y-4">
+      <div className="rounded-xl border-2 border-background bg-surface inset-highlight p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="font-semibold text-base">{playlistTitle || metadata?.playlist_title || "Playlist"}</h2>
@@ -71,14 +71,14 @@ export function PlaylistSelector() {
                     role="checkbox"
                     aria-checked={selectedIndices.includes(idx)}
                     onClick={(e) => { e.stopPropagation(); toggleEntry(idx); }}
-                    className={`w-4 h-4 rounded shrink-0 border flex items-center justify-center transition-colors ${
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
                       selectedIndices.includes(idx)
-                        ? "bg-primary border-primary"
-                        : "border-muted-foreground/30 hover:border-muted-foreground/60"
+                        ? "bg-accent border-accent inset-highlight"
+                        : "border-muted-foreground/30 bg-surface hover:border-muted-foreground/60"
                     }`}
                   >
                     {selectedIndices.includes(idx) && (
-                      <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 text-primary-foreground">
+                      <svg viewBox="0 0 16 16" fill="none" className="w-3 h-3 text-accent-foreground">
                         <path d="M13 4L6.5 12L3 8.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
@@ -169,8 +169,8 @@ export function PlaylistSelector() {
                   onClick={() => { setDownloadType("video"); useOptionsStore.getState().setEncoding("mp4_h264"); useAnalysisStore.getState().rebuildQualityOptions(); useOptionsStore.getState().setSelectedQuality('best'); }}
                   className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
                     downloadType === "video"
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-border hover:border-muted-foreground/40 hover:bg-accent/30"
+                      ? "border-accent bg-accent text-accent-foreground inset-highlight shadow-soft"
+                      : "clay-sunken text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -178,14 +178,14 @@ export function PlaylistSelector() {
                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                   </svg>
                   <span className="text-xs font-medium">Video</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight">+ Audio</span>
+                  <span className={`text-[10px] leading-tight ${downloadType === "video" ? "text-accent-foreground/75" : "text-muted-foreground"}`}>+ Audio</span>
                 </button>
                 <button
                   onClick={() => { setDownloadType("audio"); useOptionsStore.getState().setEncoding("mp3"); useAnalysisStore.getState().rebuildQualityOptions(); useOptionsStore.getState().setSelectedQuality('best'); }}
                   className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
                     downloadType === "audio"
-                      ? "border-primary bg-primary/5 shadow-sm"
-                      : "border-border hover:border-muted-foreground/40 hover:bg-accent/30"
+                      ? "border-accent bg-accent text-accent-foreground inset-highlight shadow-soft"
+                      : "clay-sunken text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -194,7 +194,7 @@ export function PlaylistSelector() {
                     <circle cx="18" cy="16" r="3" />
                   </svg>
                   <span className="text-xs font-medium">Audio</span>
-                  <span className="text-[10px] text-muted-foreground leading-tight">Only</span>
+                  <span className={`text-[10px] leading-tight ${downloadType === "audio" ? "text-accent-foreground/75" : "text-muted-foreground"}`}>Only</span>
                 </button>
               </div>
             </div>

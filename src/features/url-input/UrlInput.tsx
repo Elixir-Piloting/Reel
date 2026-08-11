@@ -80,7 +80,7 @@ export function UrlInput() {
           </div>
         )}
         {showHistory && (
-          <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-md border bg-popover shadow-md max-h-60 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 z-50 mt-2 rounded-lg border-2 border-background bg-surface inset-highlight shadow-soft max-h-60 overflow-y-auto">
             {history.map((entry) => (
               <button
                 key={entry.url}
@@ -100,7 +100,7 @@ export function UrlInput() {
       <button
         onClick={handlePaste}
         disabled={isAnalyzing}
-        className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 hover:bg-accent hover:text-accent-foreground transition-colors disabled:opacity-50"
+        className="inline-flex items-center justify-center rounded-lg border-2 border-background bg-surface px-3 text-muted-foreground inset-highlight hover:bg-surface-overlay hover:text-foreground transition-all disabled:opacity-50"
         title="Paste from clipboard"
       >
         <ClipboardPaste className="h-4 w-4" />

@@ -32,10 +32,10 @@ export function SettingsPage() {
             <button
               key={opt.value}
               onClick={() => setTheme(opt.value)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
                 theme === opt.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                  ? "border-accent bg-accent text-accent-foreground inset-highlight"
+                  : "border-background bg-surface text-secondary-foreground inset-highlight hover:bg-surface-overlay hover:text-foreground"
               }`}
             >
               {opt.icon}
@@ -79,12 +79,12 @@ export function SettingsPage() {
             <div className="flex items-center gap-2">
               <button
                 onClick={() => updateSettings({ max_concurrent_downloads: Math.max(1, settings.max_concurrent_downloads - 1) })}
-                className="w-7 h-7 rounded-md border border-input flex items-center justify-center text-sm hover:bg-accent transition-colors"
+                className="w-8 h-8 rounded-md border-2 border-background bg-surface text-sm text-muted-foreground inset-highlight hover:bg-surface-overlay hover:text-foreground flex items-center justify-center transition-all"
               >−</button>
               <span className="w-8 text-center text-sm tabular-nums">{settings.max_concurrent_downloads}</span>
               <button
                 onClick={() => updateSettings({ max_concurrent_downloads: Math.min(10, settings.max_concurrent_downloads + 1) })}
-                className="w-7 h-7 rounded-md border border-input flex items-center justify-center text-sm hover:bg-accent transition-colors"
+                className="w-8 h-8 rounded-md border-2 border-background bg-surface text-sm text-muted-foreground inset-highlight hover:bg-surface-overlay hover:text-foreground flex items-center justify-center transition-all"
               >+</button>
             </div>
           </div>
@@ -206,13 +206,13 @@ function ToggleSetting({ checked, onChange, label }: { checked: boolean; onChang
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
-        className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-          checked ? "bg-primary" : "bg-input"
+        className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background shadow-[inset_0_2px_5px_2px_var(--inset-highlight)] ${
+          checked ? "bg-accent" : "bg-surface-sunken"
         }`}
       >
         <span
-          className={`pointer-events-none block h-4 w-4 rounded-full bg-background shadow-sm ring-0 transition-transform ${
-            checked ? "translate-x-4" : "translate-x-0"
+          className={`pointer-events-none block h-4 w-4 rounded-full bg-surface inset-highlight ring-0 transition-transform ${
+            checked ? "translate-x-5" : "translate-x-1"
           }`}
         />
       </button>

@@ -21,8 +21,8 @@ export function DownloadTypeSelector() {
           onClick={() => handleTypeChange("video")}
           className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
             downloadType === "video"
-              ? "border-primary bg-primary/5 shadow-sm"
-              : "border-border hover:border-muted-foreground/40 hover:bg-accent/30"
+              ? "border-accent bg-accent text-accent-foreground inset-highlight shadow-soft"
+              : "clay-sunken text-muted-foreground hover:text-foreground"
           }`}
         >
           <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -30,14 +30,14 @@ export function DownloadTypeSelector() {
             <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
           </svg>
           <span className="text-sm font-medium">Video</span>
-          <span className="text-xs text-muted-foreground text-center leading-tight">Video + Audio</span>
+          <span className={`text-xs text-center leading-tight ${downloadType === "video" ? "text-accent-foreground/75" : "text-muted-foreground"}`}>Video + Audio</span>
         </button>
         <button
           onClick={() => handleTypeChange("audio")}
           className={`flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all ${
             downloadType === "audio"
-              ? "border-primary bg-primary/5 shadow-sm"
-              : "border-border hover:border-muted-foreground/40 hover:bg-accent/30"
+              ? "border-accent bg-accent text-accent-foreground inset-highlight shadow-soft"
+              : "clay-sunken text-muted-foreground hover:text-foreground"
           }`}
         >
           <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -46,7 +46,7 @@ export function DownloadTypeSelector() {
             <circle cx="18" cy="16" r="3" />
           </svg>
           <span className="text-sm font-medium">Audio</span>
-          <span className="text-xs text-muted-foreground text-center leading-tight">Audio Only</span>
+          <span className={`text-xs text-center leading-tight ${downloadType === "audio" ? "text-accent-foreground/75" : "text-muted-foreground"}`}>Audio Only</span>
         </button>
       </div>
     </div>

@@ -57,10 +57,10 @@ export function RangeSelector() {
           minStepsBetweenValues={1}
         >
           <Slider.Control>
-            <Slider.Track className="relative h-2 w-full bg-secondary rounded-full cursor-pointer">
-              <Slider.Indicator className="absolute h-full bg-primary rounded-full" />
-              <Slider.Thumb className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-2 border-background shadow cursor-grab active:cursor-grabbing data-[focus-visible]:outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-ring data-[focus-visible]:ring-offset-2" />
-              <Slider.Thumb className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-primary border-2 border-background shadow cursor-grab active:cursor-grabbing data-[focus-visible]:outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-ring data-[focus-visible]:ring-offset-2" />
+            <Slider.Track className="relative h-2.5 w-full rounded-full border-2 border-background bg-surface-sunken shadow-[inset_0_2px_5px_2px_var(--inset-highlight)] cursor-pointer">
+              <Slider.Indicator className="absolute h-full accent-gradient rounded-full" />
+              <Slider.Thumb className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-accent border-2 border-background cursor-grab active:cursor-grabbing data-[focus-visible]:outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-ring data-[focus-visible]:ring-offset-2" />
+              <Slider.Thumb className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full bg-accent border-2 border-background cursor-grab active:cursor-grabbing data-[focus-visible]:outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-ring data-[focus-visible]:ring-offset-2" />
             </Slider.Track>
           </Slider.Control>
         </Slider.Root>

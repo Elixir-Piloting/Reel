@@ -29,7 +29,7 @@ export function HistoryPanel({ onClose, onViewFull }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-background border-l border-border shadow-modal h-full flex flex-col">
+      <div className="relative w-full max-w-lg bg-surface border-2 border-background shadow-soft h-full flex flex-col">
         <div className="sticky top-0 bg-background/80 backdrop-blur-md border-b border-border z-10 px-4 py-3 flex items-center justify-between">
           <h2 className="text-heading font-semibold">Downloads</h2>
           <div className="flex items-center gap-1">
