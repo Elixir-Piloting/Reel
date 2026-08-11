@@ -53,8 +53,14 @@ Implementation:
 - Auto-advance every ~6s; pause while the pointer is over the carousel.
 - Dot indicators + prev/next arrow buttons for manual navigation. A single
   promo renders as a static card with no controls.
-- Card layout: banner image (rounded top), title, body, subtle external-link
-  affordance. The entire card is clickable.
+- Card layout: aspect ratio 4:3, full-bleed — the image covers the entire
+  card (`absolute inset-0 object-cover`). A gradient overlay (`bg-gradient-to-t
+  from-surface to-transparent`) sits over the image with `inset-highlight`
+  applied to it; the card keeps the `border-2 border-background` clay border.
+  Title and body text sit at the bottom over the surface-tinted gradient, with
+  a subtle external-link affordance. The entire card is clickable. If the
+  image fails to load it is hidden and the card falls back to the plain
+  `bg-surface` with text.
 - Click → `openUrl(promo.link)` from `@tauri-apps/plugin-opener` (already an
   installed dependency with `opener:default` permission).
 

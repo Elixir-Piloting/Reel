@@ -66,20 +66,24 @@ export function PromoCarousel() {
       <button
         type="button"
         onClick={() => openUrl(promo.link).catch(() => {})}
-        className="group flex w-full flex-col overflow-hidden rounded-lg border-2 border-background bg-surface inset-highlight text-left transition-all hover:bg-surface-overlay hover:shadow-soft cursor-pointer"
+        className="group relative flex aspect-[4/3] w-full flex-col justify-end overflow-hidden rounded-lg border-2 border-background bg-surface text-left transition-all hover:shadow-soft cursor-pointer"
         title={promo.title}
       >
         {promo.image_url && (
           <img
             src={promo.image_url}
             alt=""
-            className="h-24 w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
             onError={(e) => {
               e.currentTarget.style.display = "none";
             }}
           />
         )}
-        <span className="flex flex-col gap-0.5 p-3">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 inset-highlight bg-gradient-to-t from-surface to-transparent"
+        />
+        <span className="relative flex flex-col gap-0.5 p-3">
           <span className="flex items-center gap-1 text-sm font-semibold text-foreground">
             {promo.title}
             <ArrowSquareOut className="size-3.5 text-muted-foreground transition-colors group-hover:text-accent" weight="bold" />

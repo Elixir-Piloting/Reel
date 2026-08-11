@@ -19,6 +19,7 @@
   ```
   Only entries with `active !== false` are rendered. `image_url` and `body` are optional; `title` and `link` are required.
 - Carousel: one card at a time; auto-advance every 6s; pause on hover; dot indicators + prev/next arrows; a single active promo renders as a static card with no controls.
+- Card layout: aspect ratio 4:3, full-bleed. The image covers the whole card (`absolute inset-0 object-cover`); a gradient overlay (`bg-gradient-to-t from-surface to-transparent`) with `inset-highlight` sits over it; the card keeps `border-2 border-background`; title + body sit at the bottom over the surface-tinted gradient. If the image fails to load, it is hidden and the card shows `bg-surface` with the text.
 - Whole card is clickable → `openUrl(promo.link)` from `@tauri-apps/plugin-opener`.
 - On fetch failure, invalid JSON, or zero active promos the section renders `null` (hidden entirely — no placeholder, no toast).
 - CSP: add `connect-src https:` to the existing CSP in `src-tauri/tauri.conf.json`. No other capabilities/permissions change.
