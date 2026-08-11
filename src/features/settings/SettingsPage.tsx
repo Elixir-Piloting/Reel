@@ -87,14 +87,12 @@ function UpdatesCard() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (import.meta.env.DEV) return;
     getVersion()
       .then(setInstalled)
       .catch(() => setInstalled(null));
   }, []);
 
   useEffect(() => {
-    if (import.meta.env.DEV) return;
     setStatus("checking");
     void (async () => {
       try {
@@ -113,7 +111,6 @@ function UpdatesCard() {
   }, []);
 
   const scan = async () => {
-    if (import.meta.env.DEV) return;
     setStatus("checking");
     try {
       const { check } = await import("@tauri-apps/plugin-updater");
@@ -130,7 +127,6 @@ function UpdatesCard() {
   };
 
   const install = async () => {
-    if (import.meta.env.DEV) return;
     setBusy(true);
     try {
       const { check } = await import("@tauri-apps/plugin-updater");
