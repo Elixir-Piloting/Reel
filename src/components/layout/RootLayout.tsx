@@ -4,6 +4,7 @@ import { TitleBar } from "./TitleBar";
 import { DownloadSimple, Gear, House } from "@phosphor-icons/react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemePicker } from "@/components/ui/theme-picker";
+import { PromoCarousel } from "@/features/promos/PromoCarousel";
 import { useThemeStore, type Theme } from "@/stores/theme-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
@@ -98,7 +99,8 @@ export function RootLayout() {
                 )}
               </button>
             ))}
-            <div className="mt-auto">
+            <div className="mt-auto flex flex-col gap-2">
+              <PromoCarousel />
               <ThemePicker size="sm" />
             </div>
           </aside>
