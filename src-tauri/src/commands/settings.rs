@@ -10,7 +10,7 @@ fn settings_path(app: &AppHandle) -> std::path::PathBuf {
 #[tauri::command]
 pub fn get_settings(app: AppHandle) -> AppSettings {
     let path = settings_path(&app);
-    if let Ok(data) = std::fs::read_to_string(&path) {
+    let mut settings = if let Ok(data) = std::fs::read_to_string(&path) {
         match serde_json::from_str::<AppSettings>(&data) {
             Ok(s) => s,
             Err(e) => {
@@ -20,7 +20,11 @@ pub fn get_settings(app: AppHandle) -> AppSettings {
         }
     } else {
         AppSettings::default()
+    };
+    if settings.default_download_folder.trim().is_empty() {
+        settings.default_download_folder = crate::models::default_download_folder();
     }
+    settings
 }
 
 #[tauri::command]

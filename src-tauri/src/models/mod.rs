@@ -119,13 +119,18 @@ pub fn resolve_filename_conflict(dir: &str, base_name: &str, ext: &str) -> Strin
     format!("{} [{}].{}", base_name, 99, ext)
 }
 
+pub fn default_download_folder() -> String {
+    dirs::download_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("C:\\Users\\dog\\Downloads"))
+        .join("REEL")
+        .to_string_lossy()
+        .to_string()
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            default_download_folder: dirs::download_dir()
-                .unwrap_or_else(|| std::path::PathBuf::from("C:\\Users\\dog\\Downloads"))
-                .to_string_lossy()
-                .to_string(),
+            default_download_folder: default_download_folder(),
             auto_update_ytdlp: true,
             show_all_formats: false,
             max_concurrent_downloads: 3,
