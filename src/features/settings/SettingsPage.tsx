@@ -1,24 +1,15 @@
-import { Sun, Moon, Monitor } from "lucide-react";
 import { useEffect, useState } from "react";
 import { emit } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import { useSettingsStore } from "@/stores/settings-store";
-import { useThemeStore, type Theme } from "@/stores/theme-store";
 import { SettingsCard } from "@/components/ui/settings-card";
+import { ThemePicker } from "@/components/ui/theme-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-const themeOptions: { value: Theme; label: string; icon: React.ReactNode }[] = [
-  { value: "light", label: "Light", icon: <Sun className="size-4" /> },
-  { value: "dark", label: "Dark", icon: <Moon className="size-4" /> },
-  { value: "system", label: "System", icon: <Monitor className="size-4" /> },
-];
-
 export function SettingsPage() {
   const { settings, updateSettings, loaded } = useSettingsStore();
-  const theme = useThemeStore((s) => s.theme);
-  const setTheme = useThemeStore((s) => s.setTheme);
 
   if (!loaded) return null;
 
@@ -27,22 +18,7 @@ export function SettingsPage() {
       <h1 className="text-2xl font-semibold">Settings</h1>
 
       <SettingsCard title="Appearance">
-        <div className="flex gap-2">
-          {themeOptions.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => setTheme(opt.value)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm font-medium transition-all ${
-                theme === opt.value
-                  ? "border-accent bg-accent text-accent-foreground inset-highlight"
-                  : "border-background bg-surface text-secondary-foreground inset-highlight hover:bg-surface-overlay hover:text-foreground"
-              }`}
-            >
-              {opt.icon}
-              {opt.label}
-            </button>
-          ))}
-        </div>
+        <ThemePicker />
       </SettingsCard>
 
       <SettingsCard title="Download Folder">

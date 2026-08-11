@@ -4,6 +4,7 @@ import { Settings } from "lucide-react";
 import { TitleBar } from "./TitleBar";
 import { DownloadSimple, House } from "@phosphor-icons/react";
 import { Toaster } from "@/components/ui/sonner";
+import { ThemePicker } from "@/components/ui/theme-picker";
 import { useThemeStore, type Theme } from "@/stores/theme-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
@@ -65,7 +66,7 @@ export function RootLayout() {
   const navItems = [
     { icon: <House className="size-5" weight="bold" />, label: "Home", action: () => navigate("/"), active: location.pathname === "/" },
     { icon: <DownloadSimple className="size-5" weight="bold" />, label: "Downloads", action: () => navigate("/downloads"), active: location.pathname === "/downloads", badge: activeCount > 0 ? activeCount : undefined },
-    { icon: <Settings className="size-4" />, label: "Settings", action: () => navigate("/settings"), active: location.pathname === "/settings" },
+    { icon: <Settings className="size-5" />, label: "Settings", action: () => navigate("/settings"), active: location.pathname === "/settings" },
   ];
 
   return (
@@ -74,26 +75,33 @@ export function RootLayout() {
         <TitleBar />
 
         <div className="flex flex-1 min-h-0">
-          <aside className="w-16 shrink-0 flex flex-col items-center gap-2 pt-1">
+          <aside className="w-60 shrink-0 ml-3 mr-2 mb-2 flex flex-col gap-1 p-2 rounded-xl border-2 border-background bg-surface clay-sunken">
             {navItems.map((item) => (
               <button
                 key={item.label}
                 onClick={item.action}
-                className={`relative flex items-center justify-center w-10 h-10 rounded-xl border-2 border-background transition-all ${
+                className={`relative flex items-center gap-3 w-full h-11 rounded-lg pl-9 text-sm font-medium border-2 border-background bg-surface inset-highlight transition-all ${
                   item.active
-                    ? "bg-accent text-accent-foreground inset-highlight"
-                    : "bg-surface text-muted-foreground inset-highlight hover:bg-surface-overlay hover:text-foreground"
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:bg-surface-overlay hover:text-foreground"
                 }`}
                 title={item.label}
               >
+                {item.active && (
+                  <span className="absolute left-1.5 top-1/2 -translate-y-1/2 h-[70%] w-1 rounded-r-full bg-accent accent-glow" />
+                )}
                 {item.icon}
+                <span>{item.label}</span>
                 {item.badge != null && (
-                  <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-accent text-[10px] font-bold text-accent-foreground border-2 border-background">
+                  <span className="ml-auto mr-2 flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-accent text-[10px] font-bold text-accent-foreground">
                     {item.badge}
                   </span>
                 )}
               </button>
             ))}
+            <div className="mt-auto">
+              <ThemePicker size="sm" />
+            </div>
           </aside>
 
           <div className="flex-1 flex flex-col min-w-0 mr-3 mb-2">

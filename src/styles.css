@@ -169,6 +169,20 @@
   );
 }
 
+/* Accent text + soft halo glow — reusable for any active/selected label */
+@utility text-glow {
+  color: var(--accent);
+  text-shadow:
+    0 0 10px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+/* Accent halo glow for non-text elements (bars, indicators) */
+@utility accent-glow {
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 0 24px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
 /* Clay raised surface: gradient + darker rim on same hue + inset top bevel (no hard drop) */
 @utility clay-raised {
   border: 2px solid var(--background);
@@ -241,22 +255,143 @@ body {
 }
 
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 3px;
+  height: 3px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--accent);
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
   border-radius: 40px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
-  opacity: 0.8;
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
 }
 ::-webkit-scrollbar-button {
   display: none;
+}
+
+@layer components {
+  /* Theme picker — segmented radio control (original radio-input pattern, variable colors) */
+  .theme-picker {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px;
+    border-radius: 10px;
+    background-color: var(--surface-sunken);
+    border: 2px solid var(--background);
+    box-shadow: inset 0 2px 5px 2px var(--inset-highlight);
+    position: relative;
+    z-index: 0;
+    width: fit-content;
+  }
+
+  .theme-picker input {
+    display: none;
+  }
+
+  .theme-picker__option {
+    position: relative;
+    width: 90px;
+    height: 60px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    cursor: pointer;
+    border-top: 1px solid color-mix(in srgb, var(--foreground) 15%, transparent);
+    background: linear-gradient(to bottom, var(--secondary-surface), var(--surface));
+    box-shadow: 0 17px 5px 1px color-mix(in srgb, var(--background) 25%, transparent);
+    transition: all 0.1s linear;
+  }
+
+  .theme-picker__option:first-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+  }
+
+  .theme-picker__option:last-child {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+  }
+
+  .theme-picker__option::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 103%;
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(
+      to bottom,
+      transparent 10%,
+      transparent,
+      transparent 90%
+    );
+    transition: all 0.1s linear;
+    z-index: -1;
+  }
+
+  .theme-picker__option:has(input:checked) {
+    border-top: none;
+    background: linear-gradient(to bottom, var(--surface), var(--surface));
+    box-shadow: none;
+  }
+
+  .theme-picker__option:has(input:checked)::before {
+    background: linear-gradient(
+      to bottom,
+      transparent 10%,
+      color-mix(in srgb, var(--accent) 40%, transparent),
+      transparent 90%
+    );
+  }
+
+  .theme-picker__icon,
+  .theme-picker__text {
+    position: relative;
+    color: var(--muted-foreground);
+    transition: all 0.1s linear;
+  }
+
+  .theme-picker__text {
+    font-size: 13px;
+    line-height: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+  }
+
+  .theme-picker__option:has(input:checked) .theme-picker__icon,
+  .theme-picker__option:has(input:checked) .theme-picker__text {
+    color: var(--accent);
+    text-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+
+  /* Compact variant for the sidebar */
+  .theme-picker--sm {
+    padding: 3px;
+    border-radius: 8px;
+    width: 100%;
+  }
+
+  .theme-picker--sm .theme-picker__option {
+    width: auto;
+    flex: 1;
+    height: 42px;
+    padding: 6px 2px;
+    gap: 2px;
+  }
+
+  .theme-picker--sm .theme-picker__text {
+    font-size: 8px;
+    line-height: 8px;
+  }
 }
 
 select {
