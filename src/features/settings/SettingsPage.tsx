@@ -2,16 +2,28 @@ import { useEffect, useState } from "react";
 import { emit } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useBinaryStatusStore } from "@/stores/binary-status-store";
 import { SettingsCard } from "@/components/ui/settings-card";
 import { ThemePicker } from "@/components/ui/theme-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { dataService } from "@/shared/lib/data-service";
+import type { ToolStatus } from "@/shared/lib/types";
 
 export function SettingsPage() {
   const { settings, updateSettings, loaded } = useSettingsStore();
+  const binary = useBinaryStatusStore((s) => s.status);
+  const refreshBinary = useBinaryStatusStore((s) => s.refresh);
+
+  useEffect(() => {
+    refreshBinary();
+  }, [refreshBinary]);
 
   if (!loaded) return null;
+
+  const ytdlp = binary.ytdlp;
+  const ffmpeg = binary.ffmpeg;
 
   return (
     <div className="space-y-6 w-full">
@@ -45,6 +57,24 @@ export function SettingsPage() {
           <ToggleSetting checked={settings.auto_update_ytdlp} onChange={(v) => updateSettings({ auto_update_ytdlp: v })} label="Auto-update yt-dlp on launch" />
           <ToggleSetting checked={settings.auto_convert_premiere} onChange={(v) => updateSettings({ auto_convert_premiere: v })} label="Auto-convert to Premiere-compatible" />
           <ToggleSetting checked={settings.show_all_formats} onChange={(v) => updateSettings({ show_all_formats: v })} label="Show all formats (not just best per quality)" />
+          <div className="border-t border-border pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">Download tools</span>
+              <Button size="sm" variant="outline" onClick={async () => {
+                await dataService.updateYtdlp().catch(() => {});
+                await dataService.updateFfmpeg().catch(() => {});
+                useBinaryStatusStore.getState().refresh();
+              }}>
+                Update now
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              yt-dlp: v{formatVersion(ytdlp)} ({statusLabel(ytdlp.state)})
+            </p>
+            <p className="text-xs text-muted-foreground">
+              ffmpeg: v{formatVersion(ffmpeg)} ({statusLabel(ffmpeg.state)})
+            </p>
+          </div>
         </div>
       </SettingsCard>
 
@@ -169,6 +199,21 @@ function UpdatesCard() {
       </div>
     </SettingsCard>
   );
+}
+
+function statusLabel(state: ToolStatus["state"]): string {
+  switch (state) {
+    case "up_to_date": return "up to date";
+    case "updating": return "updating…";
+    case "stale": return "update available";
+    case "failed": return "update failed";
+    case "offline": return "offline — using current";
+    case "missing": return "not found";
+  }
+}
+
+function formatVersion(t: ToolStatus): string {
+  return t.installed ?? (t.latest ? `→ ${t.latest}` : "…");
 }
 
 function ToggleSetting({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {

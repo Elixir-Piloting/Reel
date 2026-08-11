@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { AnalyzeResponse, DownloadItem, AppSettings, DownloadRequest } from './types';
+import type { AnalyzeResponse, DownloadItem, AppSettings, DownloadRequest, BinaryStatus } from './types';
 
 class DataService {
   async analyzeVideo(url: string): Promise<AnalyzeResponse> {
@@ -52,6 +52,12 @@ class DataService {
   }
   async updateYtdlp(): Promise<string> {
     return invoke<string>('update_ytdlp');
+  }
+  async binaryStatus(): Promise<BinaryStatus> {
+    return invoke<BinaryStatus>('binary_status');
+  }
+  async updateFfmpeg(): Promise<string> {
+    return invoke<string>('update_ffmpeg');
   }
 }
 

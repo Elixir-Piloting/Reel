@@ -102,3 +102,14 @@ export interface AnalyzeResponse {
   playlist_title: string | null;
   playlist_entries: PlaylistEntry[] | null;
 }
+
+export interface ToolStatus {
+  installed: string | null;
+  latest: string | null;
+  state: "up_to_date" | "updating" | "stale" | "failed" | "offline" | "missing";
+}
+
+export interface BinaryStatus {
+  ytdlp: ToolStatus;
+  ffmpeg: ToolStatus;
+}

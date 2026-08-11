@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::AppError;
 use serde::{Deserialize, Serialize};
@@ -15,6 +15,45 @@ const TARGET_TRIPLE: &str = "x86_64-pc-windows-msvc";
 pub enum Tool {
     YtDlp,
     Ffmpeg,
+}
+
+#[derive(Clone, Serialize)]
+pub struct ToolStatus {
+    pub installed: Option<String>,
+    pub latest: Option<String>,
+    pub state: String,
+}
+
+#[derive(Clone, Serialize)]
+pub struct BinaryStatus {
+    pub ytdlp: ToolStatus,
+    pub ffmpeg: ToolStatus,
+}
+
+impl Default for BinaryStatus {
+    fn default() -> Self {
+        Self {
+            ytdlp: ToolStatus { installed: None, latest: None, state: "missing".into() },
+            ffmpeg: ToolStatus { installed: None, latest: None, state: "missing".into() },
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct BinariesState(pub std::sync::Mutex<BinaryStatus>);
+
+fn with_state<F: FnOnce(&mut BinaryStatus)>(app: &AppHandle, f: F) {
+    if let Some(st) = app.try_state::<BinariesState>() {
+        let mut guard = st.0.lock().unwrap();
+        f(&mut guard);
+    }
+}
+
+fn emit_status(app: &AppHandle) {
+    if let Some(st) = app.try_state::<BinariesState>() {
+        let snapshot = st.0.lock().unwrap().clone();
+        let _ = app.emit("binary-status", &snapshot);
+    }
 }
 
 pub fn bin_dir(app: &AppHandle) -> PathBuf {
@@ -227,6 +266,16 @@ pub fn extract_ffmpeg_exe(zip_bytes: &[u8], out: &Path) -> Result<(), AppError> 
 
 pub async fn update_ffmpeg(app: &AppHandle) -> Result<String, AppError> {
     let release = crate::commands::update::fetch_latest_ffmpeg_release().await?;
+
+    let mut meta = load_meta(app);
+    if meta.last_ffmpeg_tag.as_deref() == Some(release.tag.as_str()) {
+        meta.last_ffmpeg_check_day = Some(today_epoch_day());
+        save_meta(app, &meta);
+        return Ok(format!("ffmpeg already at {}", release.tag));
+    }
+    meta.last_ffmpeg_check_day = Some(today_epoch_day());
+    save_meta(app, &meta);
+
     let bytes = reqwest::get(&release.download_url)
         .await
         .map_err(|e| AppError::NetworkError(e.to_string()))?
@@ -256,10 +305,97 @@ pub async fn update_ffmpeg(app: &AppHandle) -> Result<String, AppError> {
     std::fs::rename(&tmp, &target)
         .map_err(|e| AppError::StorageError(format!("replace ffmpeg: {e}")))?;
 
-    let mut meta = load_meta(app);
-    meta.last_ffmpeg_check_day = Some(today_epoch_day());
-    meta.last_ffmpeg_tag = Some(release.tag.clone());
-    save_meta(app, &meta);
+    with_state(app, |s| {
+        s.ffmpeg.installed = installed_version(&ffmpeg_path(app), Tool::Ffmpeg);
+        s.ffmpeg.latest = Some(release.tag.clone());
+        s.ffmpeg.state = "up_to_date".into();
+    });
+    emit_status(app);
 
     Ok(format!("Updated ffmpeg to {}", release.tag))
+}
+
+pub async fn update_ytdlp(app: &AppHandle) -> Result<String, AppError> {
+    let _ = ensure_bootstrapped(app);
+    let (tag, download_url, expected_hash) = crate::commands::update::fetch_latest_release().await?;
+    let resp = reqwest::get(&download_url)
+        .await
+        .map_err(|e| AppError::NetworkError(e.to_string()))?;
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|e| AppError::NetworkError(e.to_string()))?;
+
+    if let Some(hash) = expected_hash {
+        use sha2::{Digest, Sha256};
+        let actual = hex::encode(Sha256::digest(&bytes));
+        if actual != hash {
+            return Err(AppError::NetworkError(format!("SHA256 mismatch: expected {}, got {}", hash, actual)));
+        }
+    } else if bytes.len() < 2 || bytes[0] != b'M' || bytes[1] != b'Z' {
+        return Err(AppError::NetworkError("Downloaded file is not a valid PE executable".into()));
+    }
+
+    let target = ytdlp_path(app);
+    let tmp = target.with_extension("exe.tmp");
+    std::fs::write(&tmp, &bytes).map_err(|e| AppError::StorageError(e.to_string()))?;
+    if target.exists() {
+        let backup = target.with_extension("exe.bak");
+        let _ = std::fs::rename(&target, &backup);
+    }
+    std::fs::rename(&tmp, &target).map_err(|e| AppError::StorageError(e.to_string()))?;
+
+    with_state(app, |s| {
+        let v = installed_version(&target, Tool::YtDlp);
+        s.ytdlp.installed = v;
+        s.ytdlp.latest = Some(tag.clone());
+        s.ytdlp.state = "up_to_date".into();
+    });
+    emit_status(app);
+    Ok(format!("Updated yt-dlp to {tag}"))
+}
+
+pub async fn run_launch_tasks(app: AppHandle) {
+    let _ = ensure_bootstrapped(&app);
+
+    with_state(&app, |s| {
+        s.ytdlp.installed = installed_version(&ytdlp_path(&app), Tool::YtDlp);
+        s.ffmpeg.installed = installed_version(&ffmpeg_path(&app), Tool::Ffmpeg);
+        if s.ytdlp.installed.is_some() {
+            s.ytdlp.state = "up_to_date".into();
+        }
+    });
+    emit_status(&app);
+
+    let settings = crate::commands::settings::get_settings(app.clone());
+    if settings.auto_update_ytdlp || installed_version(&ytdlp_path(&app), Tool::YtDlp).is_none() {
+        match update_ytdlp(&app).await {
+            Ok(_) => {}
+            Err(e) => {
+                with_state(&app, |s| {
+                    s.ytdlp.state = "failed".into();
+                    s.ytdlp.latest = match serde_json::to_string(&e) {
+                        Ok(s) => Some(truncate_status(s, 40)),
+                        Err(_) => None,
+                    };
+                });
+                emit_status(&app);
+            }
+        }
+    }
+
+    if ffmpeg_update_due(&app) {
+        match update_ffmpeg(&app).await {
+            Ok(_) => {}
+            Err(e) => {
+                with_state(&app, |s| { s.ffmpeg.state = "offline".into(); });
+                emit_status(&app);
+                let _ = e;
+            }
+        }
+    }
+}
+
+fn truncate_status(s: String, max: usize) -> String {
+    if s.len() <= max { s } else { format!("{}…", &s[..max]) }
 }

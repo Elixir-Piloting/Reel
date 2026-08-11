@@ -1,8 +1,8 @@
-use tauri::AppHandle;
+use tauri::{AppHandle, State};
 use serde::Deserialize;
 use crate::error::AppError;
 
-async fn fetch_latest_release() -> Result<(String, String, Option<String>), AppError> {
+pub async fn fetch_latest_release() -> Result<(String, String, Option<String>), AppError> {
     let client = reqwest::Client::new();
     let resp = client
         .get("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")
@@ -28,43 +28,18 @@ async fn fetch_latest_release() -> Result<(String, String, Option<String>), AppE
 
 #[tauri::command]
 pub async fn update_ytdlp(app: AppHandle) -> Result<String, AppError> {
-    let (_tag, download_url, expected_hash) = fetch_latest_release().await?;
+    crate::binaries::update_ytdlp(&app).await
+}
 
-    let response = reqwest::get(&download_url)
-        .await
-        .map_err(|e| AppError::NetworkError(e.to_string()))?;
+#[tauri::command]
+pub async fn update_ffmpeg(app: AppHandle) -> Result<String, AppError> {
+    crate::binaries::update_ffmpeg(&app).await
+}
 
-    let bytes = response.bytes()
-        .await
-        .map_err(|e| AppError::NetworkError(e.to_string()))?;
-
-    // Verify checksum if available
-    if let Some(hash) = expected_hash {
-        use sha2::{Sha256, Digest};
-        let actual = hex::encode(Sha256::digest(&bytes));
-        if actual != hash {
-            return Err(AppError::NetworkError(format!("SHA256 mismatch: expected {}, got {}", hash, actual)));
-        }
-    } else {
-        // Fallback: verify PE magic bytes
-        if bytes.len() < 2 || bytes[0] != b'M' || bytes[1] != b'Z' {
-            return Err(AppError::NetworkError("Downloaded file is not a valid PE executable".into()));
-        }
-    }
-
-    let _ = crate::binaries::ensure_bootstrapped(&app);
-    let target_path = crate::binaries::ytdlp_path(&app);
-
-    // Atomic replace with temp file
-    let tmp_path = target_path.with_extension("exe.tmp");
-    tokio::fs::write(&tmp_path, &bytes).await.map_err(|e| AppError::StorageError(e.to_string()))?;
-    if target_path.exists() {
-        let backup = target_path.with_extension("exe.bak");
-        let _ = tokio::fs::rename(&target_path, &backup).await;
-    }
-    tokio::fs::rename(&tmp_path, &target_path).await.map_err(|e| AppError::StorageError(e.to_string()))?;
-
-    Ok(format!("Updated yt-dlp to {} bytes", bytes.len()))
+#[tauri::command]
+pub fn binary_status(app: AppHandle, state: State<'_, crate::binaries::BinariesState>) -> crate::binaries::BinaryStatus {
+    let _ = app;
+    state.0.lock().unwrap().clone()
 }
 
 #[derive(Deserialize)]

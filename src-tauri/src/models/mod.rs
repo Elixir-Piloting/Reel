@@ -127,7 +127,7 @@ impl Default for AppSettings {
                 .unwrap_or_else(|| std::path::PathBuf::from("C:\\Users\\dog\\Downloads"))
                 .to_string_lossy()
                 .to_string(),
-            auto_update_ytdlp: false,
+            auto_update_ytdlp: true,
             auto_convert_premiere: false,
             show_all_formats: false,
             max_concurrent_downloads: 3,

@@ -7,6 +7,7 @@ import { ThemePicker } from "@/components/ui/theme-picker";
 import { PromoCarousel } from "@/features/promos/PromoCarousel";
 import { useThemeStore, type Theme } from "@/stores/theme-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useBinaryStatusStore } from "@/stores/binary-status-store";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
 import { dataService } from "@/shared/lib/data-service";
 
@@ -34,6 +35,7 @@ export function RootLayout() {
 
   useEffect(() => {
     loadSettings();
+    useBinaryStatusStore.getState().refresh();
     const p = initProgressListener();
     const interval = setInterval(async () => {
       try {

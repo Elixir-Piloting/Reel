@@ -24,6 +24,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(queue.clone())
         .manage(active_processes)
+        .manage(binaries::BinariesState::default())
         .setup(move |app| {
             commands::download::load_saved_queue(&app.handle(), &queue);
 
@@ -32,6 +33,11 @@ pub fn run() {
             let restart_handle = app_handle.clone();
             app_handle.listen("app:restart", move |_| {
                 let _ = restart_handle.restart();
+            });
+
+            let launch_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                binaries::run_launch_tasks(launch_handle).await;
             });
 
             Ok(())
@@ -54,6 +60,8 @@ pub fn run() {
             commands::settings::save_settings,
             commands::browse::browse_folder,
             commands::update::update_ytdlp,
+            commands::update::update_ffmpeg,
+            commands::update::binary_status,
             logging::log_to_file,
         ])
         .run(tauri::generate_context!())
