@@ -338,6 +338,7 @@ pub(crate) async fn process_download(
     request: DownloadRequest,
     id: String,
 ) {
+    let _ = crate::binaries::ensure_bootstrapped(&app);
     crate::logging::log_info(&format!("[process_download] STARTED for id={}", id));
     crate::logging::log_info(&format!("[process_download] url={:?} format_id={:?} download_type={:?} output_dir={:?}",
         request.url, request.format_id, request.download_type, request.output_dir));
@@ -387,6 +388,7 @@ pub(crate) async fn process_download(
 
     let max_attempts = 2;
     let mut last_progress: f64 = 0.0;
+    let mut last_error: Option<String> = None;
 
     'retry: for attempt in 0..max_attempts {
         if attempt > 0 {
@@ -516,6 +518,7 @@ pub(crate) async fn process_download(
             Err(e) => {
                 crate::logging::log_error(&format!("[process_download] ERROR spawning yt-dlp: {}", e));
                 crate::logging::log_info("[process_download] will retry after spawn error");
+                last_error = Some(format!("Failed to start yt-dlp: {}", e));
                 continue 'retry;
             }
         };
@@ -746,6 +749,7 @@ pub(crate) async fn process_download(
                             };
                             crate::logging::log_error(&format!("[process_download] process failed: {}", error));
                             crate::logging::log_info("[process_download] retrying without --embed-thumbnail/--add-metadata");
+                            last_error = Some(error.clone());
                             continue 'retry;
                         }
                     } else {
@@ -762,6 +766,7 @@ pub(crate) async fn process_download(
     }
 
     // All retry attempts exhausted without success
+    let msg = last_error.unwrap_or_else(|| "All download attempts failed".to_string());
     let mut q = lock_mutex(&queue);
     let already_cancelled = q.items.iter().any(|i| i.id == id && i.status == "Cancelled");
     if already_cancelled {
@@ -769,10 +774,10 @@ pub(crate) async fn process_download(
     }
     q.update(&id, |item| {
         item.status = "Failed".to_string();
-        item.error = Some("All download attempts failed".to_string());
+        item.error = Some(msg.clone());
     });
     save_queue(&app, &queue);
-    emit_progress(&app, &id, 0.0, "", "", "Failed: All download attempts failed");
+    emit_progress(&app, &id, 0.0, "", "", &format!("Failed: {}", msg));
     emit_item_update(&app, &queue, &id);
     crate::logging::log_info("[process_download] DONE (all retries exhausted)");
 }

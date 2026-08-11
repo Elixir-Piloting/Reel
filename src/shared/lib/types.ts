@@ -106,6 +106,7 @@ export interface ToolStatus {
   installed: string | null;
   latest: string | null;
   state: "up_to_date" | "updating" | "stale" | "failed" | "offline" | "missing";
+  error: string | null;
 }
 
 export interface BinaryStatus {

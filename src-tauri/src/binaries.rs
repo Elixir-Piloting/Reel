@@ -1,11 +1,12 @@
+#[cfg(test)]
 use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::error::AppError;
 use serde::{Deserialize, Serialize};
+use crate::error::AppError;
 
 pub const YTDLP_BIN: &str = "yt-dlp.exe";
 pub const FFMPEG_BIN: &str = "ffmpeg.exe";
@@ -22,6 +23,7 @@ pub struct ToolStatus {
     pub installed: Option<String>,
     pub latest: Option<String>,
     pub state: String,
+    pub error: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -33,8 +35,18 @@ pub struct BinaryStatus {
 impl Default for BinaryStatus {
     fn default() -> Self {
         Self {
-            ytdlp: ToolStatus { installed: None, latest: None, state: "missing".into() },
-            ffmpeg: ToolStatus { installed: None, latest: None, state: "missing".into() },
+            ytdlp: ToolStatus {
+                installed: None,
+                latest: None,
+                state: "missing".into(),
+                error: None,
+            },
+            ffmpeg: ToolStatus {
+                installed: None,
+                latest: None,
+                state: "missing".into(),
+                error: None,
+            },
         }
     }
 }
@@ -71,7 +83,7 @@ pub fn ffmpeg_path(app: &AppHandle) -> PathBuf {
     bin_dir(app).join(FFMPEG_BIN)
 }
 
-/// Copies the bundled sidecar copies into `bin\` when the target is missing.
+/// Copies the bundled resource copies into `bin\` when the target is missing.
 /// Bundled files ship in `resource_dir()/binaries` with the target-triple
 /// suffix stripped; also accept the suffixed name as a fallback.
 pub fn ensure_bootstrapped(app: &AppHandle) -> std::io::Result<()> {
@@ -137,6 +149,7 @@ pub fn parse_ffmpeg_version(line: &str) -> Option<String> {
 }
 
 /// Compare dotted date versions like `2026.08.05`.
+#[cfg(test)]
 pub fn cmp_ytdlp_version(a: &str, b: &str) -> Ordering {
     let av: Vec<u64> = a.split('.').filter_map(|s| s.parse().ok()).collect();
     let bv: Vec<u64> = b.split('.').filter_map(|s| s.parse().ok()).collect();
@@ -305,6 +318,10 @@ pub async fn update_ffmpeg(app: &AppHandle) -> Result<String, AppError> {
     std::fs::rename(&tmp, &target)
         .map_err(|e| AppError::StorageError(format!("replace ffmpeg: {e}")))?;
 
+    let mut meta = load_meta(app);
+    meta.last_ffmpeg_tag = Some(release.tag.clone());
+    save_meta(app, &meta);
+
     with_state(app, |s| {
         s.ffmpeg.installed = installed_version(&ffmpeg_path(app), Tool::Ffmpeg);
         s.ffmpeg.latest = Some(release.tag.clone());
@@ -374,7 +391,7 @@ pub async fn run_launch_tasks(app: AppHandle) {
             Err(e) => {
                 with_state(&app, |s| {
                     s.ytdlp.state = "failed".into();
-                    s.ytdlp.latest = match serde_json::to_string(&e) {
+                    s.ytdlp.error = match serde_json::to_string(&e) {
                         Ok(s) => Some(truncate_status(s, 40)),
                         Err(_) => None,
                     };
@@ -388,14 +405,26 @@ pub async fn run_launch_tasks(app: AppHandle) {
         match update_ffmpeg(&app).await {
             Ok(_) => {}
             Err(e) => {
-                with_state(&app, |s| { s.ffmpeg.state = "offline".into(); });
+                let msg = truncate_status(e.to_string(), 40);
+                with_state(&app, |s| {
+                    s.ffmpeg.state = "offline".into();
+                    s.ffmpeg.error = Some(msg);
+                });
                 emit_status(&app);
-                let _ = e;
             }
         }
     }
 }
 
 fn truncate_status(s: String, max: usize) -> String {
-    if s.len() <= max { s } else { format!("{}…", &s[..max]) }
+    if s.len() <= max {
+        s
+    } else {
+        let idx = s
+            .char_indices()
+            .nth(max)
+            .map(|(i, _)| i)
+            .unwrap_or(s.len());
+        format!("{}…", &s[..idx])
+    }
 }

@@ -279,6 +279,7 @@ fn parse_playlist_entries(json: &serde_json::Value) -> Vec<PlaylistEntry> {
 
 #[tauri::command]
 pub async fn analyze_video(app: AppHandle, url: String) -> Result<AnalyzeResponse, String> {
+    let _ = crate::binaries::ensure_bootstrapped(&app);
     validate_url(&url).map_err(|e| e)?;
 
     let output = app

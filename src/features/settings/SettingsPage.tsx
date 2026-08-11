@@ -212,7 +212,7 @@ function statusLabel(state: ToolStatus["state"]): string {
 }
 
 function formatVersion(t: ToolStatus): string {
-  return t.installed ?? (t.latest ? `→ ${t.latest}` : "…");
+  return t.error ?? t.installed ?? (t.latest ? `→ ${t.latest}` : "…");
 }
 
 function ToggleSetting({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
