@@ -1,3 +1,4 @@
+mod binaries;
 mod commands;
 mod error;
 mod logging;
