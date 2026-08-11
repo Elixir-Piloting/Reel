@@ -167,26 +167,26 @@ export function PlaylistSelector() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => { setDownloadType("video"); useOptionsStore.getState().setEncoding("mp4_h264"); useAnalysisStore.getState().rebuildQualityOptions(); useOptionsStore.getState().setSelectedQuality('best'); }}
-                  className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
+                  className={`flex flex-col items-center gap-1.5 rounded-md border-2 p-3 transition-all ${
                     downloadType === "video"
-                      ? "border-accent bg-accent text-accent-foreground inset-highlight shadow-soft"
-                      : "clay-sunken text-muted-foreground hover:text-foreground"
-                  }`}
+                      ? "border-accent text-glow shadow-soft"
+                      : "border-background text-muted-foreground hover:text-foreground"
+                  } bg-surface-overlay inset-highlight`}
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polygon points="23 7 16 12 23 17 23 7" />
                     <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                   </svg>
                   <span className="text-xs font-medium">Video</span>
-                  <span className={`text-[10px] leading-tight ${downloadType === "video" ? "text-accent-foreground/75" : "text-muted-foreground"}`}>+ Audio</span>
+                  <span className={`text-[10px] leading-tight ${downloadType === "video" ? "text-accent/80" : "text-muted-foreground"}`}>+ Audio</span>
                 </button>
                 <button
                   onClick={() => { setDownloadType("audio"); useOptionsStore.getState().setEncoding("mp3"); useAnalysisStore.getState().rebuildQualityOptions(); useOptionsStore.getState().setSelectedQuality('best'); }}
-                  className={`flex flex-col items-center gap-1.5 rounded-xl border-2 p-3 transition-all ${
+                  className={`flex flex-col items-center gap-1.5 rounded-md border-2 p-3 transition-all ${
                     downloadType === "audio"
-                      ? "border-accent bg-accent text-accent-foreground inset-highlight shadow-soft"
-                      : "clay-sunken text-muted-foreground hover:text-foreground"
-                  }`}
+                      ? "border-accent text-glow shadow-soft"
+                      : "border-background text-muted-foreground hover:text-foreground"
+                  } bg-surface-overlay inset-highlight`}
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M9 18V5l12-2v13" />
@@ -194,7 +194,7 @@ export function PlaylistSelector() {
                     <circle cx="18" cy="16" r="3" />
                   </svg>
                   <span className="text-xs font-medium">Audio</span>
-                  <span className={`text-[10px] leading-tight ${downloadType === "audio" ? "text-accent-foreground/75" : "text-muted-foreground"}`}>Only</span>
+                  <span className={`text-[10px] leading-tight ${downloadType === "audio" ? "text-accent/80" : "text-muted-foreground"}`}>Only</span>
                 </button>
               </div>
             </div>

@@ -57,7 +57,7 @@ export function DownloadPage() {
   const sizeStr = sizeMatch ? sizeMatch[1] : '';
 
   return (
-    <div className="max-w-2xl mx-auto space-y-5 py-4">
+    <div className="max-w-4xl mx-auto space-y-5">
       <UrlInput />
 
       <DownloadProgress retry={() => { const item = useDownloadExecutionStore.getState().downloadItem; if (item) dataService.retryDownload(item.id).then(() => { reset(); }); }} />

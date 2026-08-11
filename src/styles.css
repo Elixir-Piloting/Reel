@@ -8,7 +8,7 @@
   --secondary-surface: #f8f8f7;
   --cream: #fdf6ee;
   --foreground: #171717;
-  --accent: #ff5500;
+  --accent: #ff0000;
   --accent-foreground: #ffffff;
   --electric-blue: #3b82f6;
   --lime-green: #a3e635;
@@ -27,12 +27,12 @@
   --card-foreground: #171717;
   --popover: #ffffff;
   --popover-foreground: #171717;
-  --primary: #ff5500;
+  --primary: #ff0000;
   --primary-foreground: #ffffff;
   --secondary: #f8f8f7;
   --secondary-foreground: #171717;
   --input: #d4d4d8;
-  --ring: #ff5500;
+  --ring: #ff0000;
   --surface-elevated: #ffffff;
   --surface-overlay: #e8e8e6;
   --surface-sunken: #e8e8e6;
@@ -46,7 +46,7 @@
   --secondary-surface: #151514;
   --cream: #1a1612;
   --foreground: #ededed;
-  --accent: #ff5500;
+  --accent: #ff0000;
   --accent-foreground: #ffffff;
   --electric-blue: #3b82f6;
   --lime-green: #a3e635;
@@ -65,12 +65,12 @@
   --card-foreground: #ededed;
   --popover: #0d0d0c;
   --popover-foreground: #ededed;
-  --primary: #ff5500;
+  --primary: #ff0000;
   --primary-foreground: #ffffff;
   --secondary: #151514;
   --secondary-foreground: #ededed;
   --input: #27272a;
-  --ring: #ff5500;
+  --ring: #ff0000;
   --surface-elevated: #0d0d0c;
   --surface-overlay: #1a1a19;
   --surface-sunken: #000000;

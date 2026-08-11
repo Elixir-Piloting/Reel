@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import { Settings } from "lucide-react";
 import { TitleBar } from "./TitleBar";
-import { DownloadSimple, House } from "@phosphor-icons/react";
+import { DownloadSimple, Gear, House } from "@phosphor-icons/react";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemePicker } from "@/components/ui/theme-picker";
 import { useThemeStore, type Theme } from "@/stores/theme-store";
@@ -64,9 +63,9 @@ export function RootLayout() {
   }, [theme]);
 
   const navItems = [
-    { icon: <House className="size-5" weight="bold" />, label: "Home", action: () => navigate("/"), active: location.pathname === "/" },
-    { icon: <DownloadSimple className="size-5" weight="bold" />, label: "Downloads", action: () => navigate("/downloads"), active: location.pathname === "/downloads", badge: activeCount > 0 ? activeCount : undefined },
-    { icon: <Settings className="size-5" />, label: "Settings", action: () => navigate("/settings"), active: location.pathname === "/settings" },
+    { icon: <House className="size-5" weight="fill" />, label: "Home", action: () => navigate("/"), active: location.pathname === "/" },
+    { icon: <DownloadSimple className="size-5" weight="fill" />, label: "Downloads", action: () => navigate("/downloads"), active: location.pathname === "/downloads", badge: activeCount > 0 ? activeCount : undefined },
+    { icon: <Gear className="size-5" weight="fill" />, label: "Settings", action: () => navigate("/settings"), active: location.pathname === "/settings" },
   ];
 
   return (
@@ -75,12 +74,12 @@ export function RootLayout() {
         <TitleBar />
 
         <div className="flex flex-1 min-h-0">
-          <aside className="w-60 shrink-0 ml-3 mr-2 mb-2 flex flex-col gap-1 p-2 rounded-xl border-2 border-background bg-surface clay-sunken">
+          <aside className="w-72 shrink-0 ml-3 mr-2 mb-2 flex flex-col gap-1 p-2 rounded-xl border-2 border-background bg-surface clay-sunken">
             {navItems.map((item) => (
               <button
                 key={item.label}
                 onClick={item.action}
-                className={`relative flex items-center gap-3 w-full h-11 rounded-lg pl-9 text-sm font-medium border-2 border-background bg-surface inset-highlight transition-all ${
+                className={`relative flex items-center gap-3 w-full h-11 rounded-md pl-4 text-sm font-medium border-2 border-background bg-surface inset-highlight transition-all cursor-pointer ${
                   item.active
                     ? "text-foreground"
                     : "text-muted-foreground hover:bg-surface-overlay hover:text-foreground"

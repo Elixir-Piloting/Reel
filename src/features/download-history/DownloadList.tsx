@@ -43,7 +43,7 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
   const isConverting = st === 'Converting';
 
   return (
-    <div className="flex items-start gap-3 p-3 rounded-xl clay-raised">
+    <div className="flex items-start gap-3 p-3 rounded-md clay-raised">
       {item.thumbnail_url ? (
         <div className="w-32 shrink-0 rounded overflow-hidden bg-muted aspect-video">
           <img src={item.thumbnail_url} alt="" className="w-full h-full object-cover" loading="lazy" />
