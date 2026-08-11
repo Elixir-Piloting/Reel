@@ -4,6 +4,9 @@ use std::process::Command as StdCommand;
 
 use tauri::{AppHandle, Manager};
 
+use crate::error::AppError;
+use serde::{Deserialize, Serialize};
+
 pub const YTDLP_BIN: &str = "yt-dlp.exe";
 pub const FFMPEG_BIN: &str = "ffmpeg.exe";
 const TARGET_TRIPLE: &str = "x86_64-pc-windows-msvc";
@@ -139,4 +142,124 @@ mod tests {
         assert_eq!(cmp_ytdlp_version("2025.12.31", "2026.01.01"), std::cmp::Ordering::Less);
         assert_eq!(cmp_ytdlp_version("2026.08.05.1", "2026.08.05"), std::cmp::Ordering::Greater);
     }
+
+    #[test]
+    fn extracts_ffmpeg_exe_from_zip() {
+        use std::io::Write;
+        let bytes = {
+            let mut buf = std::io::Cursor::new(Vec::new());
+            {
+                let mut w = zip::ZipWriter::new(&mut buf);
+                let opts = zip::write::SimpleFileOptions::default();
+                let _ = w.start_file("bin/ffmpeg.exe", opts);
+                let _ = w.write_all(b"MZ fake ffmpeg");
+                let _ = w.finish();
+            }
+            buf.into_inner()
+        };
+        let out = std::env::temp_dir().join(format!("ffmpeg_test_{}.exe", std::process::id()));
+        extract_ffmpeg_exe(&bytes, &out).unwrap();
+        let got = std::fs::read(&out).unwrap();
+        assert_eq!(got, b"MZ fake ffmpeg");
+        let _ = std::fs::remove_file(&out);
+    }
+}
+
+#[derive(Default, Serialize, Deserialize)]
+struct BinariesMeta {
+    last_ffmpeg_check_day: Option<u64>,
+    last_ffmpeg_tag: Option<String>,
+}
+
+fn meta_path(app: &AppHandle) -> PathBuf {
+    app.path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("binaries-meta.json")
+}
+
+fn load_meta(app: &AppHandle) -> BinariesMeta {
+    std::fs::read_to_string(meta_path(app))
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+fn save_meta(app: &AppHandle, meta: &BinariesMeta) {
+    if let Ok(s) = serde_json::to_string(meta) {
+        let _ = std::fs::write(meta_path(app), s);
+    }
+}
+
+fn today_epoch_day() -> u64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() / 86400)
+        .unwrap_or(0)
+}
+
+pub fn ffmpeg_update_due(app: &AppHandle) -> bool {
+    match load_meta(app).last_ffmpeg_check_day {
+        None => true,
+        Some(day) => today_epoch_day().saturating_sub(day) >= 7,
+    }
+}
+
+/// Public for unit tests; extracts `bin/ffmpeg.exe` from a BtbN-style zip.
+pub fn extract_ffmpeg_exe(zip_bytes: &[u8], out: &Path) -> Result<(), AppError> {
+    let cursor = std::io::Cursor::new(zip_bytes);
+    let mut archive = zip::ZipArchive::new(cursor)
+        .map_err(|e| AppError::StorageError(format!("invalid zip: {e}")))?;
+    for i in 0..archive.len() {
+        let mut file = archive
+            .by_index(i)
+            .map_err(|e| AppError::StorageError(format!("zip entry {i}: {e}")))?;
+        if file.name() == "bin/ffmpeg.exe" {
+            let mut target = std::fs::File::create(out)
+                .map_err(|e| AppError::StorageError(format!("create {}: {e}", out.display())))?;
+            std::io::copy(&mut file, &mut target)
+                .map_err(|e| AppError::StorageError(format!("extract: {e}")))?;
+            return Ok(());
+        }
+    }
+    Err(AppError::StorageError("ffmpeg.exe not found in archive".into()))
+}
+
+pub async fn update_ffmpeg(app: &AppHandle) -> Result<String, AppError> {
+    let release = crate::commands::update::fetch_latest_ffmpeg_release().await?;
+    let bytes = reqwest::get(&release.download_url)
+        .await
+        .map_err(|e| AppError::NetworkError(e.to_string()))?
+        .bytes()
+        .await
+        .map_err(|e| AppError::NetworkError(e.to_string()))?;
+
+    // Sanity: must be a ZIP archive (PK\x03\x04).
+    if bytes.len() < 4 || &bytes[0..4] != b"PK\x03\x04" {
+        return Err(AppError::NetworkError("Downloaded file is not a ZIP archive".into()));
+    }
+
+    let target = ffmpeg_path(app);
+    let tmp = target.with_extension("exe.tmp");
+    extract_ffmpeg_exe(&bytes, &tmp)?;
+
+    // Smoke test: must report a version string.
+    if installed_version(&tmp, Tool::Ffmpeg).is_none() {
+        let _ = std::fs::remove_file(&tmp);
+        return Err(AppError::FfmpegError("ffmpeg smoke test failed".into()));
+    }
+
+    let backup = target.with_extension("exe.bak");
+    if target.exists() {
+        let _ = std::fs::rename(&target, &backup);
+    }
+    std::fs::rename(&tmp, &target)
+        .map_err(|e| AppError::StorageError(format!("replace ffmpeg: {e}")))?;
+
+    let mut meta = load_meta(app);
+    meta.last_ffmpeg_check_day = Some(today_epoch_day());
+    meta.last_ffmpeg_tag = Some(release.tag.clone());
+    save_meta(app, &meta);
+
+    Ok(format!("Updated ffmpeg to {}", release.tag))
 }

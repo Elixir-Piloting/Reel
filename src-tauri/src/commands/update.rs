@@ -1,4 +1,5 @@
 use tauri::AppHandle;
+use serde::Deserialize;
 use crate::error::AppError;
 
 async fn fetch_latest_release() -> Result<(String, String, Option<String>), AppError> {
@@ -64,4 +65,31 @@ pub async fn update_ytdlp(app: AppHandle) -> Result<String, AppError> {
     tokio::fs::rename(&tmp_path, &target_path).await.map_err(|e| AppError::StorageError(e.to_string()))?;
 
     Ok(format!("Updated yt-dlp to {} bytes", bytes.len()))
+}
+
+#[derive(Deserialize)]
+pub struct FfmpegRelease {
+    pub tag: String,
+    #[serde(rename = "browser_download_url")]
+    pub download_url: String,
+}
+
+pub async fn fetch_latest_ffmpeg_release() -> Result<FfmpegRelease, AppError> {
+    let client = reqwest::Client::new();
+    let resp = client
+        .get("https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest")
+        .header("User-Agent", "ytmate/0.1")
+        .send()
+        .await
+        .map_err(|e| AppError::NetworkError(e.to_string()))?;
+    let json: serde_json::Value = resp.json().await.map_err(|e| AppError::NetworkError(e.to_string()))?;
+    let tag = json["tag_name"].as_str().unwrap_or("latest").to_string();
+    let download_url = json["assets"]
+        .as_array()
+        .and_then(|assets| assets.iter().find(|a| {
+            a["name"].as_str().map(|n| n == "ffmpeg-master-latest-win64-gpl.zip").unwrap_or(false)
+        }))
+        .and_then(|a| a["browser_download_url"].as_str().map(String::from))
+        .ok_or_else(|| AppError::NetworkError("ffmpeg zip URL not found".into()))?;
+    Ok(FfmpegRelease { tag, download_url })
 }
