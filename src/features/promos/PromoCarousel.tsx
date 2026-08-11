@@ -53,15 +53,18 @@ export function PromoCarousel() {
     if (hidden || count < 2 || paused) return;
     const id = setInterval(() => setIndex((i) => (i + 1) % count), ADVANCE_MS);
     return () => clearInterval(id);
-  }, [hidden, count, paused]);
+  }, [hidden, count, paused, index]);
 
   if (hidden || !promo) return null;
 
   return (
     <div
       className="promo-carousel relative flex flex-col gap-2"
+      aria-live="polite"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
     >
       <button
         type="button"
@@ -106,14 +109,13 @@ export function PromoCarousel() {
           >
             <ArrowLeft className="size-3.5" weight="bold" />
           </button>
-          <div className="flex items-center gap-1.5" role="tablist" aria-label="Promo dots">
+          <div className="flex items-center gap-1.5">
             {promos.map((p, i) => (
               <button
                 key={i}
                 type="button"
-                role="tab"
-                aria-selected={i === index}
                 aria-label={`Promo ${i + 1}`}
+                aria-current={i === index ? "true" : "false"}
                 onClick={() => setIndex(i)}
                 className={`h-1.5 rounded-full transition-all cursor-pointer ${
                   i === index
