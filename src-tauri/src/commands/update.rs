@@ -1,9 +1,22 @@
+use std::time::Duration;
+
 use tauri::{AppHandle, State};
 use serde::Deserialize;
 use crate::error::AppError;
 
+pub(crate) const FETCH_TIMEOUT: Duration = Duration::from_secs(20);
+pub(crate) const DOWNLOAD_TIMEOUT: Duration = Duration::from_secs(600);
+
+pub(crate) fn http_client(timeout: Duration) -> reqwest::Client {
+    reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(15))
+        .timeout(timeout)
+        .build()
+        .expect("failed to build HTTP client")
+}
+
 pub async fn fetch_latest_release() -> Result<(String, String, Option<String>), AppError> {
-    let client = reqwest::Client::new();
+    let client = http_client(FETCH_TIMEOUT);
     let resp = client
         .get("https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest")
         .header("User-Agent", "ytmate/0.1")
@@ -50,7 +63,7 @@ pub struct FfmpegRelease {
 }
 
 pub async fn fetch_latest_ffmpeg_release() -> Result<FfmpegRelease, AppError> {
-    let client = reqwest::Client::new();
+    let client = http_client(FETCH_TIMEOUT);
     let resp = client
         .get("https://api.github.com/repos/BtbN/FFmpeg-Builds/releases/latest")
         .header("User-Agent", "ytmate/0.1")

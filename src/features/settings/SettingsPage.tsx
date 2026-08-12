@@ -15,15 +15,67 @@ export function SettingsPage() {
   const { settings, updateSettings, loaded } = useSettingsStore();
   const binary = useBinaryStatusStore((s) => s.status);
   const refreshBinary = useBinaryStatusStore((s) => s.refresh);
+  const [toolsBusy, setToolsBusy] = useState(false);
+  const [toolsError, setToolsError] = useState<string | null>(null);
+  const [toolsResult, setToolsResult] = useState<string | null>(null);
+  const [pasting, setPasting] = useState(false);
+  const [pasteText, setPasteText] = useState('');
+
+  const pickCookiesFile = async () => {
+    try {
+      const file = await dataService.browseCookiesFile();
+      if (file) await updateSettings({ cookies_file: file });
+    } catch (e) {
+      console.error('Failed to pick cookies file', e);
+    }
+  };
+
+  const savePastedCookies = async () => {
+    if (!pasteText.trim()) return;
+    try {
+      const path = await dataService.saveCookiesContent(pasteText);
+      await updateSettings({ cookies_file: path });
+      setPasting(false);
+      setPasteText('');
+    } catch (e) {
+      console.error('Failed to save pasted cookies', e);
+    }
+  };
 
   useEffect(() => {
     refreshBinary();
   }, [refreshBinary]);
 
+  const updateTools = async () => {
+    setToolsBusy(true);
+    setToolsError(null);
+    setToolsResult(null);
+    const messages: string[] = [];
+    const errors: string[] = [];
+    const run = async (label: string, current: boolean, fn: () => Promise<string>) => {
+      if (current) {
+        messages.push(`${label}: up to date`);
+        return;
+      }
+      try {
+        messages.push(await fn());
+      } catch (e) {
+        errors.push(`${label}: ${errorMessage(e)}`);
+      }
+    };
+    await run("yt-dlp", binary.ytdlp.state === "up_to_date", () => dataService.updateYtdlp());
+    await run("ffmpeg", binary.ffmpeg.state === "up_to_date", () => dataService.updateFfmpeg());
+    await useBinaryStatusStore.getState().refresh();
+    setToolsBusy(false);
+    if (errors.length > 0) setToolsError(errors.join(" · "));
+    if (messages.length > 0) setToolsResult(messages.join(" · "));
+  };
+
   if (!loaded) return null;
 
   const ytdlp = binary.ytdlp;
   const ffmpeg = binary.ffmpeg;
+  const allUpToDate = ytdlp.state === "up_to_date" && ffmpeg.state === "up_to_date";
 
   return (
     <div className="space-y-6 w-full">
@@ -56,15 +108,53 @@ export function SettingsPage() {
         <div className="space-y-3">
           <ToggleSetting checked={settings.auto_update_ytdlp} onChange={(v) => updateSettings({ auto_update_ytdlp: v })} label="Auto-update yt-dlp on launch" />
           <ToggleSetting checked={settings.show_all_formats} onChange={(v) => updateSettings({ show_all_formats: v })} label="Show all formats (not just best per quality)" />
+          <div className="space-y-1.5 border-t border-border pt-3">
+            <label className="text-sm" htmlFor="cookies-file">YouTube cookies (cookies.txt)</label>
+            <div className="flex gap-2">
+              <Input id="cookies-file" value={settings.cookies_file ?? ""} readOnly placeholder="No cookies file selected" className="flex-1" />
+              <Button size="sm" variant="outline" onClick={pickCookiesFile}>
+                Browse…
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setPasting((v) => !v)}>
+                {pasting ? 'Cancel' : 'Paste…'}
+              </Button>
+              {settings.cookies_file && (
+                <Button size="sm" variant="outline" onClick={() => updateSettings({ cookies_file: "" })}>
+                  Clear
+                </Button>
+              )}
+            </div>
+            {pasting && (
+              <div className="space-y-2">
+                <textarea
+                  value={pasteText}
+                  onChange={(e) => setPasteText(e.target.value)}
+                  placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;...&#10;"
+                  className="w-full h-28 rounded-md border-2 border-background bg-surface text-sm text-muted-foreground inset-highlight px-3 py-2 focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+                />
+                <Button size="sm" onClick={savePastedCookies} disabled={!pasteText.trim()}>
+                  Save cookies
+                </Button>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Exports your logged-in YouTube cookies so yt-dlp isn't treated as a bot. Export cookies.txt from Chrome (logged in) with the{" "}
+              <a
+                href="https://chromewebstore.google.com/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc"
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary underline hover:no-underline"
+              >
+                Get cookies.txt LOCALLY
+              </a>{" "}
+              extension, then select the file here.
+            </p>
+          </div>
           <div className="border-t border-border pt-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Download tools</span>
-              <Button size="sm" variant="outline" onClick={async () => {
-                await dataService.updateYtdlp().catch(() => {});
-                await dataService.updateFfmpeg().catch(() => {});
-                useBinaryStatusStore.getState().refresh();
-              }}>
-                Update now
+              <Button size="sm" variant="outline" disabled={toolsBusy || allUpToDate} onClick={updateTools}>
+                {toolsBusy ? "Updating…" : "Update now"}
               </Button>
             </div>
             <p className="text-xs text-muted-foreground mt-1">
@@ -73,6 +163,9 @@ export function SettingsPage() {
             <p className="text-xs text-muted-foreground">
               ffmpeg: v{formatVersion(ffmpeg)} ({statusLabel(ffmpeg.state)})
             </p>
+            {toolsBusy && <p className="text-xs text-muted-foreground mt-1">Updating download tools…</p>}
+            {toolsError && <p className="text-xs text-destructive mt-1">{toolsError}</p>}
+            {toolsResult && !toolsError && <p className="text-xs text-muted-foreground mt-1">{toolsResult}</p>}
           </div>
         </div>
       </SettingsCard>
@@ -209,6 +302,19 @@ function statusLabel(state: ToolStatus["state"]): string {
     case "offline": return "offline — using current";
     case "missing": return "not found";
   }
+}
+
+function errorMessage(e: unknown): string {
+  if (typeof e === "string") return e;
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === "object") {
+    const any = e as Record<string, unknown>;
+    for (const v of Object.values(any)) {
+      if (typeof v === "string") return v;
+    }
+    return JSON.stringify(e);
+  }
+  return String(e);
 }
 
 function formatVersion(t: ToolStatus): string {

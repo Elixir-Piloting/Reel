@@ -9,7 +9,7 @@ import { usePlaylistStore } from './playlist-store';
 import { useSettingsStore } from './settings-store';
 import { notify } from '../features/notifications/notificationService';
 import { Deferred } from '../shared/lib/deferred';
-import type { FormatInfo } from '../shared/lib/types';
+import type { DownloadItem, FormatInfo } from '../shared/lib/types';
 
 function qualityTierFromFormatId(formatId: string, formats: FormatInfo[]): string {
   const fmt = formats.find(f => f.format_id === formatId);
@@ -22,19 +22,6 @@ function qualityTierFromFormatId(formatId: string, formats: FormatInfo[]): strin
   return 'best';
 }
 
-interface DownloadItem {
-  id: string;
-  url: string;
-  title: string;
-  status: string;
-  progress: number;
-  speed: string;
-  eta: string;
-  output_path: string;
-  filename: string;
-  error?: string;
-}
-
 interface DownloadExecutionState {
   isDownloading: boolean;
   downloadProgress: number;
@@ -43,6 +30,7 @@ interface DownloadExecutionState {
   downloadStatus: string;
   downloadItem: DownloadItem | null;
   completedFileName: string | null;
+  activeDownloads: DownloadItem[];
 
   setDownloading: (v: boolean) => void;
   startDownload: () => Promise<void>;
@@ -63,6 +51,7 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
   downloadStatus: '',
   downloadItem: null,
   completedFileName: null,
+  activeDownloads: [],
   unlistenRef: null,
 
   setDownloading: (v) => set({ isDownloading: v }),
@@ -94,9 +83,16 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
         has_audio: downloadType === 'video',
         encoding,
       });
-      set({ downloadItem: item });
-      useAnalysisStore.getState().setPhase('idle');
-      useAnalysisStore.getState().setUrl('');
+      useAnalysisStore.getState().reset();
+      set({
+        downloadItem: item,
+        downloadStatus: 'Queued',
+        downloadProgress: 0,
+        downloadSpeed: '',
+        downloadEta: '',
+        completedFileName: null,
+        activeDownloads: [item, ...get().activeDownloads.filter((i) => i.id !== item.id)],
+      });
       notify.downloadStarted(metadata.title);
     } catch (e) {
       logger.error('Failed to start download', { error: e });
@@ -272,21 +268,49 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
       }
     };
 
+    const upsertActive = (payload: DownloadItem) => {
+      const statusStr = String(payload.status ?? 'Unknown');
+      const isDone = ['Completed', 'Failed', 'Cancelled'].includes(statusStr);
+      set((s) => {
+        const exists = s.activeDownloads.some((i) => i.id === payload.id);
+        if (isDone) {
+          return exists
+            ? { activeDownloads: s.activeDownloads.filter((i) => i.id !== payload.id) }
+            : {};
+        }
+        if (exists) {
+          return { activeDownloads: s.activeDownloads.map((i) => (i.id === payload.id ? { ...i, ...payload } : i)) };
+        }
+        return { activeDownloads: [payload, ...s.activeDownloads] };
+      });
+    };
+
     const unlistenProgress = await listen<{ id: string; progress: number; speed: string; eta: string; status: string }>(
       'download-progress',
       (event) => {
+        const { id, progress, speed, eta, status } = event.payload;
+        set((s) => {
+          const target = s.activeDownloads.find((i) => i.id === id);
+          if (!target) return {};
+          return {
+            activeDownloads: s.activeDownloads.map((i) =>
+              i.id === id ? { ...i, progress, speed, eta, status } : i,
+            ),
+          };
+        });
         const currentItem = get().downloadItem;
-        if (!currentItem || event.payload.id !== currentItem.id) return;
+        if (!currentItem || id !== currentItem.id) return;
         if (get().downloadStatus === 'Cancelled') return;
         batch({
-          downloadProgress: event.payload.progress,
-          downloadSpeed: event.payload.speed,
-          downloadEta: event.payload.eta,
-          downloadStatus: event.payload.status,
+          downloadProgress: progress,
+          downloadSpeed: speed,
+          downloadEta: eta,
+          downloadStatus: status,
         });
       },
     );
     const unlistenItem = await listen<DownloadItem>('download-item-update', (event) => {
+      upsertActive(event.payload);
       const currentItem = get().downloadItem;
       if (!currentItem || event.payload.id !== currentItem.id) return;
       const prev = currentItem;
@@ -325,6 +349,15 @@ export const useDownloadExecutionStore = create<DownloadExecutionState>()(
       set({ unlistenRef: null });
     };
     set({ unlistenRef: cleanup });
+    dataService
+      .getQueue()
+      .then((items) => {
+        const active = items
+          .filter((i) => !['Completed', 'Failed', 'Cancelled'].includes(i.status))
+          .reverse();
+        set({ activeDownloads: active });
+      })
+      .catch(() => {});
     return cleanup;
   }}),
   {

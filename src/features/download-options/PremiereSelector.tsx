@@ -25,6 +25,9 @@ export function PremiereSelector() {
       <p className="text-xs text-muted-foreground">
         Re-encode to H.264/AAC after downloading for Adobe Premiere.
       </p>
+      <p className="text-xs text-muted-foreground/80">
+        Encoding can take a long time — turn this off if you don't need to import the video into Premiere Pro.
+      </p>
     </div>
   );
 }

@@ -23,6 +23,12 @@ class DataService {
   async browseFolder(): Promise<string | null> {
     return invoke<string | null>('browse_folder');
   }
+  async browseCookiesFile(): Promise<string | null> {
+    return invoke<string | null>('browse_cookies_file');
+  }
+  async saveCookiesContent(content: string): Promise<string> {
+    return invoke<string>('save_cookies_content', { content });
+  }
   async getSettings(): Promise<AppSettings> {
     return invoke<AppSettings>('get_settings');
   }

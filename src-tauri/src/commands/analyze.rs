@@ -1,6 +1,7 @@
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 use crate::error::AppError;
+use crate::commands::settings::cookies_args;
 use crate::models::{VideoMeta, FormatInfo, PlaylistEntry, AnalyzeResponse};
 
 fn validate_url(url: &str) -> Result<(), String> {
@@ -285,19 +286,19 @@ pub async fn analyze_video(app: AppHandle, url: String) -> Result<AnalyzeRespons
     let output = app
         .shell()
         .command(crate::binaries::ytdlp_path(&app))
-        .args(["-J", "--no-download", "--flat-playlist", &url])
+        .args(["-J", "--no-download", "--flat-playlist"])
+        .args(cookies_args(&app))
+        .arg(&url)
         .output()
         .await
         .map_err(|e| AppError::YtDlpError(e.to_string()).to_string())?;
 
     if !output.status.success() {
-        let stderr = String::from_utf8(output.stderr)
-            .map_err(|e| AppError::InvalidUtf8(e.to_string()).to_string())?;
-        return Err(AppError::YtDlpError(stderr).to_string());
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(AppError::YtDlpError(stderr.to_string()).to_string());
     }
 
-    let stdout = String::from_utf8(output.stdout)
-        .map_err(|e| AppError::InvalidUtf8(e.to_string()).to_string())?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
     let json: serde_json::Value = serde_json::from_str(&stdout)
         .map_err(|e| AppError::YtDlpError(e.to_string()).to_string())?;
 

@@ -475,6 +475,7 @@ pub(crate) async fn process_download(
         }
         args.push("--no-part".to_string());
         args.push("--no-mtime".to_string());
+        args.extend(crate::commands::settings::cookies_args(&app));
 
         if let Some(ref start) = request.start_time {
             if !start.is_empty() {
@@ -621,14 +622,17 @@ pub(crate) async fn process_download(
                     if payload.code == Some(0) {
                         crate::logging::log_info("[process_download] yt-dlp completed successfully");
                         emit_progress(&app, &id, 100.0, "", "", "Processing");
-                        if premiere_mode && download_type == DownloadType::Video {
-                            {
-                                let mut q = lock_mutex(&queue);
-                                q.update(&id, |item| {
-                                    item.status = "Converting".to_string();
-                                });
-                            }
-                            emit_progress(&app, &id, 100.0, "", "", "Converting");
+                            if premiere_mode && download_type == DownloadType::Video {
+                                {
+                                    let mut q = lock_mutex(&queue);
+                                    q.update(&id, |item| {
+                                        item.status = "Converting".to_string();
+                                        item.progress = 0.0;
+                                    });
+                                }
+                                save_queue(&app, &queue);
+                                emit_item_update(&app, &queue, &id);
+                                emit_progress(&app, &id, 0.0, "", "", "Converting");
 
                             let input_ext = encoding_to_ext(&request.encoding, &download_type);
                             let input_path = format!("{}/{}.{}", output_dir, safe_filename, input_ext);
@@ -645,6 +649,9 @@ pub(crate) async fn process_download(
                                     .shell()
                                     .command(crate::binaries::ffmpeg_path(&app))
                                     .args([
+                                        "-nostdin",
+                                        "-nostats",
+                                        "-progress", "pipe:1",
                                         "-i", &input_path,
                                         "-c:v", "libx264",
                                         "-pix_fmt", "yuv420p",
@@ -676,19 +683,21 @@ pub(crate) async fn process_download(
                                                 } else {
                                                     0.0
                                                 };
+                                                {
+                                                    let mut q = lock_mutex(&queue);
+                                                    q.update(&id, |item| {
+                                                        item.progress = pct;
+                                                    });
+                                                }
+                                                emit_item_update(&app, &queue, &id);
                                                 emit_progress(&app, &id, pct, "", "", "Converting");
                                             }
                                         }
                                         CommandEvent::Terminated(conv_status) => {
                                                 if conv_status.code == Some(0) {
-                                                    match std::fs::rename(&temp_path, &input_path) {
-                                                        Ok(_) => {
-                                                            let _ = std::fs::remove_file(&input_path);
-                                                        }
-                                                        Err(e) => {
-                                                            crate::logging::log_error(&format!("Failed to rename converted file: {}", e));
-                                                            let _ = std::fs::remove_file(&temp_path);
-                                                        }
+                                                    if std::fs::rename(&temp_path, &input_path).is_err() {
+                                                        let _ = std::fs::remove_file(&input_path);
+                                                        let _ = std::fs::rename(&temp_path, &input_path);
                                                     }
                                                 }
                                             break;

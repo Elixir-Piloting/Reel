@@ -1,7 +1,13 @@
-import { FolderOpen, RotateCcw, Trash2, X, ImageIcon, Ban, XCircle, Pause, Play } from "lucide-react";
+import { FolderOpen, RotateCcw, Trash2, X, ImageIcon, Ban, XCircle, Pause, Play, MoreVertical } from "lucide-react";
 import { CheckCircleIcon } from "@phosphor-icons/react";
 import { dataService } from "@/shared/lib/data-service";
 import type { DownloadItem } from "@/shared/lib/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 function PieProgress({ percent, size = 28 }: { percent: number; size?: number }) {
   const r = size * 0.4;
@@ -31,7 +37,7 @@ interface Props {
   searchQuery?: string;
 }
 
-function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: () => void }) {
+export function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: () => void }) {
   const st = item.status;
   const downloading = ['Downloading', 'Merging', 'Converting'].includes(st);
   const queued = st === 'Queued';
@@ -66,23 +72,18 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
           {cancelled && (
             <XCircle className="w-4 h-4 text-destructive shrink-0" />
           )}
-          {failed && (
-            <div>
-              <span className="text-xs text-destructive">Failed</span>
-              {(item.error?.toLowerCase().includes('yt-dlp')) && (
-                <div className="mt-2 p-2 border border-destructive/30 bg-destructive/10 rounded text-center">
-                  <p className="text-xs font-medium">yt-dlp unavailable</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">The download tool is missing or was not set up.</p>
-                  <button onClick={() => dataService.updateYtdlp()} className="text-[10px] text-primary underline mt-1">Download yt-dlp</button>
-                </div>
-              )}
+          {failed && item.error?.toLowerCase().includes('yt-dlp') && (
+            <div className="mt-2 p-2 border border-destructive/30 bg-destructive/10 rounded text-center">
+              <p className="text-xs font-medium">yt-dlp unavailable</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">The download tool is missing or was not set up.</p>
+              <button onClick={() => dataService.updateYtdlp()} className="text-[10px] text-primary underline mt-1">Download yt-dlp</button>
             </div>
           )}
           {paused && (
             <Pause className="w-4 h-4 text-muted-foreground shrink-0" />
           )}
           <span className={`text-xs ${downloading ? 'text-muted-foreground' : completed ? 'text-muted-foreground' : cancelled ? 'text-destructive' : failed ? 'text-destructive' : paused ? 'text-muted-foreground' : ''}`}>
-            {downloading && `downloading ${item.progress.toFixed(0)}%`}
+            {downloading && `${st === 'Converting' ? 'converting' : st === 'Merging' ? 'merging' : 'downloading'} ${item.progress.toFixed(0)}%`}
             {queued && 'queued'}
             {paused && 'Paused'}
             {completed && 'downloaded'}
@@ -92,21 +93,23 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
           {queued && (
             <span className="text-xs text-muted-foreground">Queued</span>
           )}
-          {(st === 'Merging' || st === 'Converting') && (
-            <span className="text-xs text-muted-foreground capitalize">{st.toLowerCase()}</span>
-          )}
         </div>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        {(downloading || queued) && !isConverting && (
+        {(downloading || queued) && (
           <>
-            <button
-              onClick={() => dataService.pauseDownload(item.id).then(onRefresh)}
-              className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
-              title="Pause"
-            >
-              <Pause className="w-4 h-4" />
-            </button>
+            {!isConverting && (
+              <button
+                onClick={() => dataService.pauseDownload(item.id).then(onRefresh)}
+                className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
+                title="Pause"
+              >
+                <Pause className="w-4 h-4" />
+              </button>
+            )}
+            {isConverting && (
+              <span className="text-xs text-muted-foreground">finalizing…</span>
+            )}
             <button
               onClick={() => dataService.cancelDownload(item.id).then(onRefresh)}
               className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
@@ -125,14 +128,30 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
             <Play className="w-4 h-4" />
           </button>
         )}
-        {completed && item.output_path && (
-          <button
-            onClick={() => dataService.openInExplorer(item.output_path)}
-            className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
-            title="Open in Explorer"
-          >
-            <FolderOpen className="w-4 h-4" />
-          </button>
+        {completed && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
+              title="More actions"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {item.output_path && (
+                <DropdownMenuItem onClick={() => dataService.openInExplorer(item.output_path)}>
+                  <FolderOpen className="w-4 h-4" />
+                  Reveal in Explorer
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                className="text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive focus:bg-destructive/10 focus:text-destructive"
+                onClick={async () => { await dataService.removeFromQueue(item.id); onRefresh(); }}
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {(failed || cancelled) && (
           <button
@@ -143,20 +162,17 @@ function DownloadItemCard({ item, onRefresh }: { item: DownloadItem; onRefresh: 
             <RotateCcw className="w-4 h-4" />
           </button>
         )}
-        {completed && (
+        {!completed && (
           <button
-            onClick={async () => { await dataService.removeFromQueue(item.id); onRefresh(); }}
+            onClick={async () => {
+              if (downloading || queued) {
+                await dataService.cancelDownload(item.id);
+              }
+              await dataService.removeFromQueue(item.id);
+              onRefresh();
+            }}
             className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
             title="Remove"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        )}
-        {(cancelled || failed || paused) && (
-          <button
-            onClick={async () => { await dataService.removeFromQueue(item.id); onRefresh(); }}
-            className="p-1.5 rounded-md hover:bg-accent text-muted-foreground transition-colors"
-            title="Dismiss"
           >
             <X className="w-4 h-4" />
           </button>

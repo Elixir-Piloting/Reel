@@ -49,7 +49,7 @@ export function DownloadsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search downloads..."
-            className="pl-9 h-9"
+            className="pl-9 h-9 clay-pressed"
           />
         </div>
         {activeCount > 0 && (

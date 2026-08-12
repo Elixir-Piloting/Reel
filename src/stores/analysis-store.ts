@@ -85,6 +85,7 @@ export const useAnalysisStore = create<AnalysisState>()(
       useOptionsStore.getState().resetOptions();
     }
     set({ phase: 'analyzing', error: null, metadata: null, playlistTitle: null, formats: [], qualityOptions: [] });
+    usePlaylistStore.getState().resetPlaylist();
     try {
       const cached = getCachedAnalysis(url);
       if (cached) {

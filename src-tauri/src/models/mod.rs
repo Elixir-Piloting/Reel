@@ -102,6 +102,12 @@ pub struct AppSettings {
     pub show_all_formats: bool,
     pub max_concurrent_downloads: u32,
     pub filename_pattern: Option<String>,
+    #[serde(default = "default_cookies_file")]
+    pub cookies_file: Option<String>,
+}
+
+fn default_cookies_file() -> Option<String> {
+    None
 }
 
 pub fn resolve_filename_conflict(dir: &str, base_name: &str, ext: &str) -> String {
@@ -135,6 +141,7 @@ impl Default for AppSettings {
             show_all_formats: false,
             max_concurrent_downloads: 3,
             filename_pattern: None,
+            cookies_file: None,
         }
     }
 }

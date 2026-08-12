@@ -1,18 +1,19 @@
 import { useAnalysisStore } from "@/stores/analysis-store";
 import { useOptionsStore } from "@/stores/options-store";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
-import { usePlaylistStore } from "@/stores/playlist-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { UrlInput } from "@/features/url-input";
 import { VideoInfo } from "@/features/video-info";
 import { DownloadTypeSelector, QualitySelector, RangeSelector, EncodingSelector, PremiereSelector, DestinationSelector } from "@/features/download-options";
 import { PlaylistSelector } from "@/features/playlist";
-import { DownloadProgress } from "@/features/download-execution";
+import { ActiveDownloads } from "@/features/download-execution";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Download, RotateCcw } from "lucide-react";
 import { formatDuration, formatDate } from "@/lib/utils";
 import { dataService } from "@/shared/lib/data-service";
+import { isRateLimitError } from "@/shared/lib/rate-limit";
 
 function AnimatedSection({ show, children }: { show: boolean; children: React.ReactNode }) {
   return (
@@ -27,6 +28,7 @@ function AnimatedSection({ show, children }: { show: boolean; children: React.Re
 }
 
 export function DownloadPage() {
+  const navigate = useNavigate();
   const phase = useAnalysisStore((s) => s.phase);
   const metadata = useAnalysisStore((s) => s.metadata);
   const error = useAnalysisStore((s) => s.error);
@@ -37,12 +39,14 @@ export function DownloadPage() {
   const isDownloading = useDownloadExecutionStore((s) => s.isDownloading);
   const startDownload = useDownloadExecutionStore((s) => s.startDownload);
   const reset = useDownloadExecutionStore((s) => s.reset);
-  const itemProgress = usePlaylistStore((s) => s.itemProgress);
+  const playlistTitle = useAnalysisStore((s) => s.playlistTitle);
 
   const qualityOptions = useAnalysisStore((s) => s.qualityOptions);
   const [imgLoaded, setImgLoaded] = useState(false);
   const [dirExists, setDirExists] = useState(true);
-  const isPlaylistDownload = Object.keys(itemProgress).length > 0;
+  const isPlaylistDownload =
+    phase === "playlist" ||
+    (playlistTitle !== null && (phase === "downloading" || phase === "completed"));
   const effectiveDir = outputDir || settings.default_download_folder || '';
   const hasFormats = qualityOptions.length > 0;
   const canDownload = phase === "ready" && !!effectiveDir && dirExists && !!selectedQuality;
@@ -59,8 +63,6 @@ export function DownloadPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-5">
       <UrlInput />
-
-      <DownloadProgress retry={() => { const item = useDownloadExecutionStore.getState().downloadItem; if (item) dataService.retryDownload(item.id).then(() => { reset(); }); }} />
 
       <AnimatedSection show={phase === "analyzing"}>
         {phase === "analyzing" && <VideoInfo />}
@@ -137,6 +139,14 @@ export function DownloadPage() {
             <button onClick={() => setError(null)} className="text-destructive hover:text-destructive/80 shrink-0">&times;</button>
           </div>
         )}
+        {phase === "error" && isRateLimitError(error) && (
+          <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm">
+            <p className="font-medium text-yellow-600 dark:text-yellow-400">YouTube is rate-limiting this IP address.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Add your YouTube cookies in <button onClick={() => navigate("/settings")} className="text-primary underline hover:no-underline">Settings → Download Defaults</button> to fix this. Export cookies.txt from your browser while logged in.
+            </p>
+          </div>
+        )}
       </AnimatedSection>
 
       {!isPlaylistDownload && (
@@ -151,6 +161,8 @@ export function DownloadPage() {
           )}
         </AnimatedSection>
       )}
+
+      {!isPlaylistDownload && <ActiveDownloads />}
     </div>
   );
 }

@@ -289,7 +289,10 @@ pub async fn update_ffmpeg(app: &AppHandle) -> Result<String, AppError> {
     meta.last_ffmpeg_check_day = Some(today_epoch_day());
     save_meta(app, &meta);
 
-    let bytes = reqwest::get(&release.download_url)
+    let client = crate::commands::update::http_client(crate::commands::update::DOWNLOAD_TIMEOUT);
+    let bytes = client
+        .get(&release.download_url)
+        .send()
         .await
         .map_err(|e| AppError::NetworkError(e.to_string()))?
         .bytes()
@@ -335,7 +338,22 @@ pub async fn update_ffmpeg(app: &AppHandle) -> Result<String, AppError> {
 pub async fn update_ytdlp(app: &AppHandle) -> Result<String, AppError> {
     let _ = ensure_bootstrapped(app);
     let (tag, download_url, expected_hash) = crate::commands::update::fetch_latest_release().await?;
-    let resp = reqwest::get(&download_url)
+
+    let installed = installed_version(&ytdlp_path(app), Tool::YtDlp);
+    if installed.as_deref() == Some(tag.as_str()) {
+        with_state(app, |s| {
+            s.ytdlp.installed = installed;
+            s.ytdlp.latest = Some(tag.clone());
+            s.ytdlp.state = "up_to_date".into();
+        });
+        emit_status(app);
+        return Ok(format!("yt-dlp already at {}", tag));
+    }
+
+    let client = crate::commands::update::http_client(crate::commands::update::DOWNLOAD_TIMEOUT);
+    let resp = client
+        .get(&download_url)
+        .send()
         .await
         .map_err(|e| AppError::NetworkError(e.to_string()))?;
     let bytes = resp
@@ -380,6 +398,9 @@ pub async fn run_launch_tasks(app: AppHandle) {
         s.ffmpeg.installed = installed_version(&ffmpeg_path(&app), Tool::Ffmpeg);
         if s.ytdlp.installed.is_some() {
             s.ytdlp.state = "up_to_date".into();
+        }
+        if s.ffmpeg.installed.is_some() {
+            s.ffmpeg.state = "up_to_date".into();
         }
     });
     emit_status(&app);

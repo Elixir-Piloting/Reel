@@ -75,6 +75,7 @@ export interface AppSettings {
   show_all_formats: boolean;
   max_concurrent_downloads: number;
   filename_pattern?: string;
+  cookies_file?: string;
 }
 
 export interface QualityOption {

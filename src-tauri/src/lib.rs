@@ -59,6 +59,8 @@ pub fn run() {
             commands::settings::get_settings,
             commands::settings::save_settings,
             commands::browse::browse_folder,
+            commands::browse::browse_cookies_file,
+            commands::settings::save_cookies_content,
             commands::update::update_ytdlp,
             commands::update::update_ffmpeg,
             commands::update::binary_status,

@@ -1,1 +1,1 @@
-export { DownloadProgress } from './DownloadProgress';
+export { ActiveDownloads } from './ActiveDownloads';
