@@ -47,7 +47,7 @@ must re-prompt on the next launch.
 
 1. Query `dataService.getQueue()` and filter for active statuses
    `["Queued", "Downloading", "Merging", "Converting", "Paused"]`.
-2. If any item is active, show a second `AlertDialog`:
+2. If any item is active, swap the same dialog's content to a warning view:
    - Title: "Downloads are in progress"
    - Body: "Downloads in progress will be cancelled if you update now."
    - Buttons: **Go back** (outline) / **Cancel downloads & Update** (destructive).
