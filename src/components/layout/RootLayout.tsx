@@ -10,6 +10,7 @@ import { useSettingsStore } from "@/stores/settings-store";
 import { useBinaryStatusStore } from "@/stores/binary-status-store";
 import { useDownloadExecutionStore } from "@/stores/download-execution-store";
 import { dataService } from "@/shared/lib/data-service";
+import { ACTIVE_STATUSES } from "@/shared/lib/active-statuses";
 
 function applyTheme(theme: Theme) {
   const root = document.documentElement;
@@ -41,7 +42,7 @@ export function RootLayout() {
       try {
         const q = await dataService.getQueue();
         const active = q.filter((i: any) => {
-          return ['Queued', 'Downloading', 'Merging', 'Converting', 'Paused'].includes(i.status);
+          return ACTIVE_STATUSES.includes(i.status);
         });
         setActiveCount(active.length);
         if (active.length === 0 && useDownloadExecutionStore.getState().isDownloading) {

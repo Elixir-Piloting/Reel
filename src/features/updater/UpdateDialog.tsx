@@ -3,6 +3,7 @@ import type { Update } from "@tauri-apps/plugin-updater";
 import { emit } from "@tauri-apps/api/event";
 import { buttonVariants } from "@/components/ui/button";
 import { dataService } from "@/shared/lib/data-service";
+import { ACTIVE_STATUSES } from "@/shared/lib/active-statuses";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -11,8 +12,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-const ACTIVE_STATUSES = ["Queued", "Downloading", "Merging", "Converting", "Paused"];
 
 interface Props {
   update: Update | null;
@@ -42,6 +41,7 @@ export function UpdateDialog({ update, onClose }: Props) {
   };
 
   const handleUpdateNow = async () => {
+    if (installing) return;
     try {
       const queue = await dataService.getQueue();
       const active = queue.filter((i) => ACTIVE_STATUSES.includes(i.status)).length;
@@ -50,12 +50,14 @@ export function UpdateDialog({ update, onClose }: Props) {
       } else {
         await install();
       }
-    } catch {
-      await install();
+    } catch (e) {
+      console.error("[updater] queue check failed", e);
+      onClose();
     }
   };
 
   const handleConfirmInstall = async () => {
+    if (installing) return;
     try {
       await dataService.cancelAllDownloads();
     } catch {

@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { dataService } from "@/shared/lib/data-service";
+import { ACTIVE_STATUSES } from "@/shared/lib/active-statuses";
 import { DownloadItemCard } from "@/features/download-history/DownloadList";
 import type { DownloadItem } from "@/shared/lib/types";
-
-const ACTIVE_STATUSES = ['Queued', 'Downloading', 'Merging', 'Converting', 'Paused'];
 
 export function ActiveDownloads() {
   const [items, setItems] = useState<DownloadItem[]>([]);

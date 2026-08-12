@@ -3,6 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { MinusIcon, SquareIcon, ArrowsInSimpleIcon, XIcon } from "@phosphor-icons/react";
 import reelLogo from "@/assets/reel-logo.png";
 import { dataService } from "@/shared/lib/data-service";
+import { ACTIVE_STATUSES } from "@/shared/lib/active-statuses";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,8 +14,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-const ACTIVE_STATUSES = ["Queued", "Downloading", "Merging", "Converting", "Paused"];
 
 export function TitleBar() {
   const [maximized, setMaximized] = useState(false);
