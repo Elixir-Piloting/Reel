@@ -3,6 +3,12 @@ use std::cmp::Ordering;
 use std::path::{Path, PathBuf};
 use std::process::Command as StdCommand;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
 use tauri::{AppHandle, Emitter, Manager};
 
 use serde::{Deserialize, Serialize};
@@ -118,10 +124,14 @@ pub fn installed_version(path: &Path, tool: Tool) -> Option<String> {
     if !path.exists() {
         return None;
     }
-    let out = match tool {
-        Tool::YtDlp => StdCommand::new(path).arg("--version").output().ok()?,
-        Tool::Ffmpeg => StdCommand::new(path).arg("-version").output().ok()?,
-    };
+    let mut cmd = StdCommand::new(path);
+    cmd.arg(match tool {
+        Tool::YtDlp => "--version",
+        Tool::Ffmpeg => "-version",
+    });
+    #[cfg(windows)]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+    let out = cmd.output().ok()?;
     if !out.status.success() {
         return None;
     }
