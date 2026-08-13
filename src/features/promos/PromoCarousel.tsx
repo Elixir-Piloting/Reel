@@ -95,14 +95,14 @@ export function PromoCarousel() {
             onError={() => {
               if (count > 1) setIndex((i) => (i + 1) % count);
             }}
-            className="aspect-[4/3] w-full rounded-md object-cover"
+            className="w-full rounded-md"
           />
         ) : (
           promo.media_url && (
             <img
               src={promo.media_url}
               alt=""
-              className="aspect-[4/3] w-full rounded-md object-cover"
+              className="w-full rounded-md"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}

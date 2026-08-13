@@ -233,6 +233,12 @@ function main(argv) {
   run(`git push origin v${next}`);
 
   publishToReleases(next, bundle);
+
+  // publishToReleases writes update.json to the release repo via the contents
+  // API, which commits it on the remote. Pull those commits back so local
+  // master stays in sync with origin and the next push isn't rejected.
+  run("git pull --ff-only origin master");
+
   console.log(`Released v${next}. Installer + update.json published to ${RELEASE_REPO}.`);
 }
 
