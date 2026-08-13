@@ -1,26 +1,10 @@
 [
   {
     "type": "image",
-    "media_url": "https://ik.imagekit.io/fdvspuunj/templates/iphone%2016.png",
-    "title": "Try Murmur",
-    "body": "Hands-free voice dictation for Windows.",
-    "link": "https://murmur.freyo.app",
-    "active": true
-  },
-  {
-    "type": "image",
-    "media_url": "https://ik.imagekit.io/fdvspuunj/templates/iphone%2016.png",
-    "title": "Try Murmur",
-    "body": "Hands-free voice dictation for Windows.",
-    "link": "https://murmur.freyo.app",
-    "active": true
-  },
-  {
-    "type": "image",
-    "media_url": "https://ik.imagekit.io/fdvspuunj/templates/iphone%2016.png",
-    "title": "Try Murmur",
-    "body": "Hands-free voice dictation for Windows.",
-    "link": "https://murmur.freyo.app",
+    "media_url": "https://ik.imagekit.io/fdvspuunj/Promotional%20content/custom%20windows%20app%20banner.png",
+    "title": "Need a custom Windows app?",
+    "body": "Click the link to tell us what you want built.",
+    "link": "https://work.elxr.studio/contact",
     "active": true
   }
 ]
